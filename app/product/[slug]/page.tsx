@@ -85,7 +85,7 @@ async function resolveInitialVariation(product: WooProduct): Promise<{
   if (!sortedVariations.length) return null;
 
   const varDataAll = await Promise.all(
-    sortedVariations.map((v) => getVariationData(v.id))
+    sortedVariations.map((v) => getVariationData(product.id, v.id))
   );
 
   const inStockIdx = varDataAll.findIndex((d) => d?.is_in_stock === true);

@@ -1,5 +1,80 @@
 // WooCommerce Store API Types
 
+// ─── REST API v3 raw response types ──────────────────────────────────────────
+// These represent the raw JSON shapes returned by /wp-json/wc/v3/ endpoints.
+// They are converted to the Store-API-compatible types below via normalizeV3Product().
+
+export interface CurrencySettings {
+  code: string;
+  symbol: string;
+  minor_unit: number;
+  decimal_separator: string;
+  thousand_separator: string;
+  prefix: string;
+  suffix: string;
+}
+
+export interface WooV3ProductImage {
+  id: number;
+  src: string;
+  name: string;
+  alt: string;
+}
+
+export interface WooV3ProductAttribute {
+  id: number;
+  name: string;
+  slug: string;
+  position: number;
+  visible: boolean;
+  variation: boolean;
+  options: string[];
+}
+
+export interface WooV3Variation {
+  id: number;
+  price: string;
+  regular_price: string;
+  sale_price: string;
+  on_sale: boolean;
+  stock_status: "instock" | "outofstock" | "onbackorder";
+  attributes: { id: number; name: string; option: string }[];
+  image?: WooV3ProductImage;
+}
+
+export interface WooV3Product {
+  id: number;
+  name: string;
+  slug: string;
+  type: "simple" | "variable" | "grouped" | "external";
+  status: string;
+  description: string;
+  short_description: string;
+  sku: string;
+  permalink: string;
+  price: string;
+  regular_price: string;
+  sale_price: string;
+  on_sale: boolean;
+  purchasable: boolean;
+  stock_status: "instock" | "outofstock" | "onbackorder";
+  manage_stock: boolean;
+  stock_quantity: number | null;
+  low_stock_amount: number | null;
+  average_rating: string;
+  rating_count: number;
+  featured: boolean;
+  categories: { id: number; name: string; slug: string }[];
+  tags: { id: number; name: string; slug: string }[];
+  images: WooV3ProductImage[];
+  attributes: WooV3ProductAttribute[];
+  variations: number[];
+  external_url?: string;
+  button_text?: string;
+}
+
+// ─── Store API types (used by UI components) ─────────────────────────────────
+
 export interface WooImage {
   id: number;
   src: string;

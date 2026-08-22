@@ -49,7 +49,7 @@ export default async function ProductVariationPage({ params }: Props) {
     notFound();
   }
 
-  const variationData = await getVariationData(vid);
+  const variationData = await getVariationData(product.id, vid);
 
   return (
     <ProductPageLayout
