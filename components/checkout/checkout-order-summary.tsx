@@ -15,6 +15,7 @@ interface CheckoutOrderSummaryProps {
   isUpdatingAddress: boolean;
   isSelectingShipping: boolean;
   isStripeMethod: boolean;
+  isRazorpayMethod: boolean;
 }
 
 export function CheckoutOrderSummary({
@@ -23,6 +24,7 @@ export function CheckoutOrderSummary({
   isUpdatingAddress,
   isSelectingShipping,
   isStripeMethod,
+  isRazorpayMethod,
 }: CheckoutOrderSummaryProps) {
   return (
     <Card className="sticky top-24">
@@ -72,6 +74,8 @@ export function CheckoutOrderSummary({
             ? t('checkout.recalculating')
             : isStripeMethod
             ? t('checkout.payWithStripe')
+            : isRazorpayMethod
+            ? t('checkout.payWithRazorpay')
             : t('checkout.placeOrder')}
         </Button>
       </CardContent>

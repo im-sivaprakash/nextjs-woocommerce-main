@@ -13,6 +13,7 @@ const PAYMENT_METHOD_LABELS: Record<string, string> = {
   stripe: t('checkout.payment.stripe'),
   stripe_cc: t('checkout.payment.stripe_cc'),
   paypal: t('checkout.payment.paypal'),
+  razorpay: t('checkout.payment.razorpay'),
 };
 
 const PAYMENT_METHOD_DESCRIPTIONS: Record<string, string> = {
@@ -22,6 +23,7 @@ const PAYMENT_METHOD_DESCRIPTIONS: Record<string, string> = {
   stripe: t('checkout.paymentDesc.stripe'),
   stripe_cc: t('checkout.paymentDesc.stripe_cc'),
   paypal: t('checkout.paymentDesc.paypal'),
+  razorpay: t('checkout.paymentDesc.razorpay'),
 };
 
 interface PaymentMethodSelectorProps {
@@ -77,6 +79,12 @@ export function PaymentMethodSelector({ paymentMethods, isDisabled, onPaymentSel
                   <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
                     <ExternalLink className="h-3 w-3" />
                     {t('checkout.stripeRedirect')}
+                  </p>
+                )}
+                {isSelected && method === "razorpay" && (
+                  <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+                    <ExternalLink className="h-3 w-3" />
+                    {t('checkout.razorpayModal')}
                   </p>
                 )}
               </div>

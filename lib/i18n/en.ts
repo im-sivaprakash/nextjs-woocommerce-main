@@ -190,6 +190,7 @@ export const en: Record<string, string> = {
   "checkout.payment.stripe": "Credit / Debit Card",
   "checkout.payment.stripe_cc": "Credit / Debit Card",
   "checkout.payment.paypal": "PayPal",
+  "checkout.payment.razorpay": "Razorpay",
 
   "checkout.paymentDesc.bacs": "Make your payment directly into our bank account. Please use your order number as the payment reference. Your order will not be shipped until the funds have cleared in our account.",
   "checkout.paymentDesc.cheque": "Please send a check to our store postal address. Your order will not be shipped until the funds have cleared.",
@@ -197,8 +198,13 @@ export const en: Record<string, string> = {
   "checkout.paymentDesc.stripe": "Pay securely with your credit or debit card via Stripe.",
   "checkout.paymentDesc.stripe_cc": "Pay securely with your credit or debit card via Stripe.",
   "checkout.paymentDesc.paypal": "Pay via PayPal; you will be redirected to the PayPal site.",
+  "checkout.paymentDesc.razorpay": "Pay securely via Razorpay. Supports UPI, cards, wallets, and net banking.",
 
   "checkout.stripeRedirect": "You will be redirected to Stripe\u2019s secure checkout.",
+  "checkout.razorpayModal": "A secure Razorpay payment window will open.",
+  "checkout.payWithRazorpay": "Pay with Razorpay",
+  "checkout.razorpayVerifying": "Verifying payment\u2026",
+  "checkout.razorpayFailed": "Payment verification failed. Please try again.",
 
   "checkout.fields.firstName": "First Name *",
   "checkout.fields.lastName": "Last Name *",

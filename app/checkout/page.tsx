@@ -1,7 +1,8 @@
 "use client";
 
-import { useTransition, useEffect, useRef, useActionState } from "react";
+import { useState, useTransition, useEffect, useRef, useCallback, useActionState } from "react";
 import { useRouter } from "next/navigation";
+import Script from "next/script";
 import { useCartStore } from "@/lib/store/cart-store";
 import { useCheckoutStore } from "@/lib/store/checkout-store";
 import { selectShippingRate } from "@/lib/actions/cart";
@@ -21,6 +22,16 @@ import { trackBeginCheckout, trackAddShippingInfo, trackAddPaymentInfo } from "@
 import { cartItemsToEcommerceItems } from "@/lib/utils/gtm-items";
 import { t } from "@/lib/i18n";
 
+// Global type declaration for Razorpay checkout.js
+declare global {
+  interface Window {
+    Razorpay: new (options: Record<string, unknown>) => {
+      open: () => void;
+      on: (event: string, handler: () => void) => void;
+    };
+  }
+}
+
 export default function CheckoutPage() {
   const { cart, isLoading, cartToken } = useCartStore();
   const { sameAsShipping, selectedPaymentMethod, setSelectedPaymentMethod } = useCheckoutStore();
@@ -30,6 +41,103 @@ export default function CheckoutPage() {
   const { isUpdatingAddress } = useAddressUpdate(cartToken ?? null);
 
   const isStripeMethod = selectedPaymentMethod === "stripe_cc" || selectedPaymentMethod === "stripe";
+  const isRazorpayMethod = selectedPaymentMethod === "razorpay";
+
+  // Razorpay verification state
+  const [isVerifyingRazorpay, setIsVerifyingRazorpay] = useState(false);
+
+  // Razorpay modal handler — opens the checkout modal and verifies payment on success
+  const handleRazorpayModal = useCallback(
+    (data: {
+      razorpayOrderId: string;
+      wcOrderId: number;
+      wcOrderKey: string;
+      amount: number;
+      currency: string;
+      keyId: string;
+      customerName: string;
+      customerEmail: string;
+      customerPhone: string;
+    }) => {
+      if (typeof window === "undefined" || !window.Razorpay) {
+        toast.error("Razorpay script not loaded. Please refresh the page.");
+        return;
+      }
+
+      const options: Record<string, unknown> = {
+        key: data.keyId,
+        amount: data.amount,
+        currency: data.currency,
+        name: process.env.NEXT_PUBLIC_SITE_URL ?? "Store",
+        order_id: data.razorpayOrderId,
+        prefill: {
+          name: data.customerName,
+          email: data.customerEmail,
+          contact: data.customerPhone,
+        },
+        theme: { color: "#3399cc" },
+        handler: async (response: {
+          razorpay_order_id: string;
+          razorpay_payment_id: string;
+          razorpay_signature: string;
+        }) => {
+          // Verify payment signature on the server
+          setIsVerifyingRazorpay(true);
+          try {
+            const verifyRes = await fetch("/api/razorpay/verify", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+                wc_order_id: data.wcOrderId,
+                wc_order_key: data.wcOrderKey,
+                billing_email: data.customerEmail,
+              }),
+            });
+
+            if (!verifyRes.ok) {
+              const errBody = await verifyRes.json().catch(() => ({}));
+              toast.error(
+                (errBody as { error?: string }).error ?? t("checkout.razorpayFailed")
+              );
+              return;
+            }
+
+            const result = (await verifyRes.json()) as {
+              verified: boolean;
+              orderId: number;
+              orderKey: string;
+              billingEmail?: string;
+            };
+
+            // Redirect to order confirmation
+            const params = new URLSearchParams({
+              order_id: String(result.orderId),
+              order_key: result.orderKey,
+              ...(result.billingEmail && { billing_email: result.billingEmail }),
+            });
+            router.push(`/order-confirmation?${params.toString()}`);
+          } catch {
+            toast.error(t("checkout.razorpayFailed"));
+          } finally {
+            setIsVerifyingRazorpay(false);
+          }
+        },
+        modal: {
+          ondismiss: () => {
+            // User closed the modal without completing payment
+            toast.error("Payment was cancelled.");
+          },
+        },
+      };
+
+      const rzp = new window.Razorpay(options);
+      rzp.open();
+    },
+    [router]
+  );
 
   // Handle server action result
   useEffect(() => {
@@ -38,6 +146,19 @@ export default function CheckoutPage() {
       toast.error(checkoutState.message);
     } else if (checkoutState.type === "stripe_redirect") {
       window.location.href = checkoutState.url;
+    } else if (checkoutState.type === "razorpay_create") {
+      // Open Razorpay Checkout modal with the order data
+      handleRazorpayModal({
+        razorpayOrderId: checkoutState.razorpayOrderId,
+        wcOrderId: checkoutState.wcOrderId,
+        wcOrderKey: checkoutState.wcOrderKey,
+        amount: checkoutState.amount,
+        currency: checkoutState.currency,
+        keyId: checkoutState.keyId,
+        customerName: checkoutState.customerName,
+        customerEmail: checkoutState.customerEmail,
+        customerPhone: checkoutState.customerPhone,
+      });
     } else if (checkoutState.type === "success") {
       const params = new URLSearchParams({
         order_id: String(checkoutState.orderId),
@@ -46,7 +167,7 @@ export default function CheckoutPage() {
       });
       router.push(`/order-confirmation?${params.toString()}`);
     }
-  }, [checkoutState, router]);
+  }, [checkoutState, router, handleRazorpayModal]);
 
   // Fire begin_checkout once when cart is ready
   const checkoutTracked = useRef(false);
@@ -110,6 +231,12 @@ export default function CheckoutPage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
+      {/* Load Razorpay checkout.js — only when Razorpay is a viable method */}
+      <Script
+        src="https://checkout.razorpay.com/v1/checkout.js"
+        strategy="lazyOnload"
+      />
+
       <h1 className="text-3xl font-heading font-bold mb-8">{t("checkout.pageTitle")}</h1>
 
       <form action={formAction}>
@@ -148,10 +275,11 @@ export default function CheckoutPage() {
           <div className="lg:col-span-1">
             <CheckoutOrderSummary
               cart={cart}
-              isPending={isPending}
+              isPending={isPending || isVerifyingRazorpay}
               isUpdatingAddress={isUpdatingAddress}
               isSelectingShipping={isSelectingShipping}
               isStripeMethod={isStripeMethod}
+              isRazorpayMethod={isRazorpayMethod}
             />
           </div>
         </div>

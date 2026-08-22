@@ -124,3 +124,29 @@ export const OrderConfirmationParamsSchema = z.object({
     .catch(undefined),
   billing_email: z.email().optional().catch(undefined),
 });
+
+// ── Razorpay payment verification ────────────────────────────────────────────
+
+/** Validates the payload sent to /api/razorpay/verify after the checkout modal. */
+export const RazorpayVerifySchema = z.object({
+  /** Razorpay order ID — format: order_XXXXXXXXXXXX */
+  razorpay_order_id: z
+    .string()
+    .min(1, "Razorpay order ID is required")
+    .max(100),
+  /** Razorpay payment ID — format: pay_XXXXXXXXXXXX */
+  razorpay_payment_id: z
+    .string()
+    .min(1, "Razorpay payment ID is required")
+    .max(100),
+  /** HMAC SHA256 hex signature */
+  razorpay_signature: z
+    .string()
+    .regex(/^[a-f0-9]{64}$/, "Invalid signature format"),
+  /** WooCommerce order ID (numeric) */
+  wc_order_id: z.number().int().positive(),
+  /** WooCommerce order key — format: wc_order_<alphanumeric> */
+  wc_order_key: z.string().min(1).max(100),
+  /** Customer billing email for order confirmation redirect */
+  billing_email: z.string().email().optional(),
+});

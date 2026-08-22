@@ -3,12 +3,14 @@
 import { BillingSchema, ShippingSchema } from "@/lib/validation/schemas";
 import { checkout } from "./cart";
 import { createStripeOrder } from "./stripe-checkout";
+import { createRazorpayCheckoutOrder } from "./razorpay-checkout";
 import type { WooCart } from "@/lib/woocommerce/types";
 
 export type CheckoutActionState =
   | null
   | { type: "error"; message: string }
   | { type: "stripe_redirect"; url: string }
+  | { type: "razorpay_create"; razorpayOrderId: string; wcOrderId: number; wcOrderKey: string; amount: number; currency: string; keyId: string; customerName: string; customerEmail: string; customerPhone: string }
   | { type: "success"; orderId: number; orderKey: string; email: string };
 
 /**
@@ -138,6 +140,44 @@ export async function checkoutAction(
     }
 
     return { type: "stripe_redirect", url: result.sessionUrl };
+  }
+
+  // ── Razorpay ──────────────────────────────────────────────────────────────
+  const isRazorpayMethod = paymentMethod === "razorpay";
+
+  if (isRazorpayMethod) {
+    const lineItems = cart.items.map((item) => ({
+      name: item.name,
+      unitAmount: parseInt(item.prices.price),
+      quantity: item.quantity,
+      currency: item.prices.currency_code,
+    }));
+
+    const result = await createRazorpayCheckoutOrder(
+      billing,
+      shipping,
+      paymentMethod,
+      lineItems,
+      cartToken
+    );
+
+    if ("error" in result) {
+      console.error("[checkoutAction] Razorpay order creation failed:", result.error);
+      return { type: "error", message: extractWooMessage(result.error) };
+    }
+
+    return {
+      type: "razorpay_create",
+      razorpayOrderId: result.razorpayOrderId,
+      wcOrderId: result.wcOrderId,
+      wcOrderKey: result.wcOrderKey,
+      amount: result.amount,
+      currency: result.currency,
+      keyId: result.keyId,
+      customerName: result.customerName,
+      customerEmail: result.customerEmail,
+      customerPhone: result.customerPhone,
+    };
   }
 
   // ── Non-Stripe (bacs, cod, cheque, etc.) ─────────────────────────────────
