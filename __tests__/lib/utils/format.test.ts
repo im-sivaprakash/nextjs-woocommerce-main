@@ -1,4 +1,4 @@
-import { formatPrice, formatProductPrice, stripHtml } from "@/lib/utils/format";
+import { formatPrice, formatProductPrice, stripHtml, decodeHtml } from "@/lib/utils/format";
 
 describe("formatPrice", () => {
   it("converts minor-unit integer to decimal display with prefix", () => {
@@ -88,3 +88,25 @@ describe("stripHtml", () => {
     expect(stripHtml('<a href="https://example.com">link</a>')).toBe("link");
   });
 });
+
+describe("decodeHtml", () => {
+  it("decodes &#038; and &amp; to &", () => {
+    expect(decodeHtml("Pure &#038; Natural")).toBe("Pure & Natural");
+    expect(decodeHtml("Pure &amp; Natural")).toBe("Pure & Natural");
+  });
+
+  it("decodes single quotes / apostrophes", () => {
+    expect(decodeHtml("Men&#039;s Fragrance")).toBe("Men's Fragrance");
+    expect(decodeHtml("It&#8217;s good")).toBe("It's good");
+  });
+
+  it("decodes double quotes", () => {
+    expect(decodeHtml("&quot;Classic&quot;")).toBe('"Classic"');
+    expect(decodeHtml("&#8220;Hello&#8221;")).toBe('"Hello"');
+  });
+
+  it("returns empty string for empty or null input", () => {
+    expect(decodeHtml("")).toBe("");
+  });
+});
+

@@ -17,6 +17,7 @@ import { ShippingAddressForm } from "@/components/checkout/shipping-address-form
 import { ShippingMethodSelector } from "@/components/checkout/shipping-method-selector";
 import { PaymentMethodSelector } from "@/components/checkout/payment-method-selector";
 import { CheckoutOrderSummary } from "@/components/checkout/checkout-order-summary";
+import { CouponInput } from "@/components/checkout/coupon-input";
 import { useAddressUpdate } from "@/lib/hooks/use-address-update";
 import { trackBeginCheckout, trackAddShippingInfo, trackAddPaymentInfo } from "@/lib/utils/gtm-events";
 import { cartItemsToEcommerceItems } from "@/lib/utils/gtm-items";
@@ -259,7 +260,7 @@ export default function CheckoutPage() {
               />
             )}
 
-            {cart.needs_payment && cart.payment_methods?.length > 0 && (
+            {cart.needs_payment && parseInt(cart.totals?.total_price || "0") > 0 && cart.payment_methods?.length > 0 && (
               <PaymentMethodSelector
                 paymentMethods={cart.payment_methods}
                 isDisabled={isUpdatingAddress}
@@ -270,6 +271,7 @@ export default function CheckoutPage() {
                 }}
               />
             )}
+            <CouponInput />
           </div>
 
           <div className="lg:col-span-1">

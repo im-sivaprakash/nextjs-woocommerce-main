@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import type { WooProduct } from "@/lib/woocommerce/types";
-import { formatProductPrice } from "@/lib/utils/format";
+import { formatProductPrice, decodeHtml } from "@/lib/utils/format";
 import { Badge } from "@/components/ui/badge";
 import { WishlistButton } from "@/components/wishlist-button";
 import { trackSelectItem } from "@/lib/utils/gtm-events";
@@ -29,7 +29,7 @@ export function ProductCard({ product }: ProductCardProps) {
         {image ? (
           <Image
             src={image.src}
-            alt={image.alt || product.name}
+            alt={image.alt || decodeHtml(product.name)}
             fill
             className="object-cover transition-transform duration-500 group-hover:scale-105"
             sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
@@ -71,11 +71,11 @@ export function ProductCard({ product }: ProductCardProps) {
       <div className="space-y-1">
         {product.categories[0] && (
           <p className="text-[10px] tracking-[0.2em] uppercase text-muted-foreground font-medium">
-            {product.categories[0].name}
+            {decodeHtml(product.categories[0].name)}
           </p>
         )}
         <h3 className="font-medium text-sm leading-snug line-clamp-2 group-hover:text-foreground transition-colors">
-          {product.name}
+          {decodeHtml(product.name)}
         </h3>
         <div className="flex items-center gap-2 pt-0.5">
           <span className="font-semibold text-sm">{current}</span>

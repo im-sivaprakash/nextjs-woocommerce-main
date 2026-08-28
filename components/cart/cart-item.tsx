@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useCartStore } from "@/lib/store/cart-store";
-import { formatPrice } from "@/lib/utils/format";
+import { formatPrice, decodeHtml } from "@/lib/utils/format";
 import { Button } from "@/components/ui/defaultbutton";
 import { Trash2 } from "lucide-react";
 import { QuantityInput } from "@/components/ui/quantity-input";
@@ -23,7 +23,7 @@ export function CartItem({ item }: CartItemProps) {
         {item.images[0] ? (
           <Image
             src={item.images[0].src}
-            alt={item.images[0].alt || item.name}
+            alt={item.images[0].alt || decodeHtml(item.name)}
             fill
             className="object-cover"
             sizes="96px"
@@ -36,7 +36,7 @@ export function CartItem({ item }: CartItemProps) {
       </div>
 
       <div className="flex flex-1 flex-col">
-        <h3 className="font-medium">{item.name}</h3>
+        <h3 className="font-medium">{decodeHtml(item.name)}</h3>
         {item.variation.length > 0 && (
           <p className="text-sm text-muted-foreground">
             {item.variation.map((v) => `${v.attribute}: ${v.value}`).join(", ")}
@@ -66,7 +66,7 @@ export function CartItem({ item }: CartItemProps) {
           <div className="flex items-center gap-4">
             <span className="font-semibold">
               {formatPrice(
-                item.totals.line_total,
+                item.totals.line_subtotal,
                 item.totals.currency_minor_unit,
                 item.totals.currency_prefix,
                 item.totals.currency_suffix

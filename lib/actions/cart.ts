@@ -8,6 +8,8 @@ import {
   checkoutOnServer,
   selectShippingRateOnServer,
   updateCustomerOnServer,
+  applyCouponOnServer,
+  removeCouponOnServer,
 } from "@/lib/woocommerce/api";
 import {
   AddToCartSchema,
@@ -15,8 +17,11 @@ import {
   RemoveCartItemSchema,
   SelectShippingRateSchema,
   PartialAddressSchema,
+  ApplyCouponSchema,
+  RemoveCouponSchema,
 } from "@/lib/validation/schemas";
 import type { WooCart, WooCheckoutOrder, BillingAddress, ShippingAddress } from "@/lib/woocommerce/types";
+import { decodeHtml } from "@/lib/utils/format";
 
 function extractCartToken(response: Response): string | null {
   return response.headers.get("Cart-Token") || response.headers.get("cart-token");
@@ -179,6 +184,61 @@ export async function selectShippingRate(
     if (!res.ok) {
       const body = await res.text();
       return { cart: null, cartToken: token, error: body };
+    }
+    const cart = (await res.json()) as WooCart;
+    return { cart, cartToken: token };
+  } catch (e) {
+    return { cart: null, cartToken: null, error: (e as Error).message };
+  }
+}
+
+// ── Coupon actions ──────────────────────────────────────────────────────────
+
+/** Extract a human-readable error message from a WooCommerce REST/Store API error body. */
+function extractCouponErrorMessage(raw: string): string {
+  try {
+    const parsed = JSON.parse(raw) as { message?: string; code?: string };
+    if (parsed.message) return decodeHtml(parsed.message);
+  } catch { /* not JSON */ }
+  return "Failed to process coupon. Please try again.";
+}
+
+export async function applyCoupon(
+  code: string,
+  cartToken?: string
+): Promise<{ cart: WooCart | null; cartToken: string | null; error?: string }> {
+  const parsed = ApplyCouponSchema.safeParse({ code, cartToken });
+  if (!parsed.success) {
+    return { cart: null, cartToken: null, error: parsed.error.issues[0]?.message ?? "Invalid coupon code" };
+  }
+  try {
+    const res = await applyCouponOnServer(parsed.data.code, parsed.data.cartToken);
+    const token = extractCartToken(res);
+    if (!res.ok) {
+      const body = await res.text();
+      return { cart: null, cartToken: token, error: extractCouponErrorMessage(body) };
+    }
+    const cart = (await res.json()) as WooCart;
+    return { cart, cartToken: token };
+  } catch (e) {
+    return { cart: null, cartToken: null, error: (e as Error).message };
+  }
+}
+
+export async function removeCoupon(
+  code: string,
+  cartToken?: string
+): Promise<{ cart: WooCart | null; cartToken: string | null; error?: string }> {
+  const parsed = RemoveCouponSchema.safeParse({ code, cartToken });
+  if (!parsed.success) {
+    return { cart: null, cartToken: null, error: parsed.error.issues[0]?.message ?? "Invalid coupon code" };
+  }
+  try {
+    const res = await removeCouponOnServer(parsed.data.code, parsed.data.cartToken);
+    const token = extractCartToken(res);
+    if (!res.ok) {
+      const body = await res.text();
+      return { cart: null, cartToken: token, error: extractCouponErrorMessage(body) };
     }
     const cart = (await res.json()) as WooCart;
     return { cart, cartToken: token };

@@ -491,6 +491,24 @@ export async function selectShippingRateOnServer(
   );
 }
 
+// ─── Coupons (Store API) ────────────────────────────────────────────────────
+
+export async function applyCouponOnServer(code: string, cartToken?: string) {
+  return cartFetch(
+    `${STORE_API_URL}/cart/apply-coupon`,
+    { code },
+    cartToken,
+  );
+}
+
+export async function removeCouponOnServer(code: string, cartToken?: string) {
+  return cartFetch(
+    `${STORE_API_URL}/cart/remove-coupon`,
+    { code },
+    cartToken,
+  );
+}
+
 // ─── Orders (Store API — unchanged) ─────────────────────────────────────────
 
 export async function getStoreOrder(

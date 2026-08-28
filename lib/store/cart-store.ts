@@ -5,6 +5,8 @@ import {
   addToCart as addToCartAction,
   updateCartItem as updateCartItemAction,
   removeFromCart as removeFromCartAction,
+  applyCoupon as applyCouponAction,
+  removeCoupon as removeCouponAction,
 } from "@/lib/actions/cart";
 
 // ── Token helpers ─────────────────────────────────────────────────────────────
@@ -48,6 +50,8 @@ export interface CartState {
   ) => Promise<{ error?: string }>;
   updateItem: (key: string, quantity: number) => Promise<void>;
   removeItem: (key: string) => Promise<void>;
+  applyCoupon: (code: string) => Promise<{ error?: string }>;
+  removeCoupon: (code: string) => Promise<{ error?: string }>;
   clearCart: () => void;
 }
 
@@ -159,6 +163,22 @@ export const useCartStore = create<CartState>((set, get) => {
         removeFromCartAction(key, token)
       );
       applyResult(result);
+    },
+
+    applyCoupon: async (code) => {
+      const result = await withPending((token) =>
+        applyCouponAction(code, token)
+      );
+      applyResult(result);
+      return result.error ? { error: result.error } : {};
+    },
+
+    removeCoupon: async (code) => {
+      const result = await withPending((token) =>
+        removeCouponAction(code, token)
+      );
+      applyResult(result);
+      return result.error ? { error: result.error } : {};
     },
 
     clearCart: () => {

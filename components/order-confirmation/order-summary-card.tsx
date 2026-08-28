@@ -1,7 +1,7 @@
 import Image from "next/image";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/defaultcard";
 import { Separator } from "@/components/ui/separator";
-import { formatPrice } from "@/lib/utils/format";
+import { formatPrice, decodeHtml } from "@/lib/utils/format";
 import type { WooStoreOrder } from "@/lib/woocommerce/types";
 import { t } from "@/lib/i18n";
 
@@ -30,19 +30,19 @@ export function OrderSummaryCard({ order }: OrderSummaryCardProps) {
                   <div className="relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-md bg-muted">
                     <Image
                       src={img.thumbnail || img.src}
-                      alt={img.alt || item.name}
+                      alt={img.alt || decodeHtml(item.name)}
                       fill
                       className="object-cover"
                     />
                   </div>
                 )}
                 <div className="flex-1 min-w-0">
-                  <p className="font-medium truncate">{item.name}</p>
+                  <p className="font-medium truncate">{decodeHtml(item.name)}</p>
                   <p className="text-sm text-muted-foreground">{t('orderConfirmation.qty')} {item.quantity}</p>
                 </div>
                 <p className="font-medium whitespace-nowrap">
                   {formatPrice(
-                    item.totals.line_total,
+                    item.totals.line_subtotal,
                     item.totals.currency_minor_unit,
                     item.totals.currency_prefix,
                     item.totals.currency_suffix

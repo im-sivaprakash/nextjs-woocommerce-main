@@ -12,6 +12,8 @@ jest.mock("@/lib/actions/cart", () => ({
   addToCart: jest.fn(),
   updateCartItem: jest.fn(),
   removeFromCart: jest.fn(),
+  applyCoupon: jest.fn(),
+  removeCoupon: jest.fn(),
 }));
 
 import {
@@ -19,6 +21,8 @@ import {
   addToCart as mockAddToCart,
   updateCartItem as mockUpdateCartItem,
   removeFromCart as mockRemoveFromCart,
+  applyCoupon as mockApplyCoupon,
+  removeCoupon as mockRemoveCoupon,
 } from "@/lib/actions/cart";
 import { useCartStore } from "@/lib/store/cart-store";
 import type { WooCart } from "@/lib/woocommerce/types";
@@ -200,3 +204,73 @@ describe("useCartStore — removeItem", () => {
     expect(useCartStore.getState().itemCount).toBe(0);
   });
 });
+
+describe("useCartStore — applyCoupon", () => {
+  it("calls applyCoupon action and updates store with new cart and coupons", async () => {
+    const couponCart = makeCart({
+      coupons: [
+        {
+          code: "save10",
+          discount_type: "percent",
+          totals: {
+            total_discount: "1000",
+            total_discount_tax: "0",
+            currency_code: "USD",
+          },
+        },
+      ],
+    });
+    (mockGetCart as jest.Mock).mockResolvedValue({ cart: makeCart(), cartToken: "tok" });
+    (mockApplyCoupon as jest.Mock).mockResolvedValue({ cart: couponCart, cartToken: "tok_updated" });
+
+    let res: { error?: string } = {};
+    await act(async () => {
+      res = await useCartStore.getState().applyCoupon("save10");
+    });
+
+    expect(mockApplyCoupon).toHaveBeenCalledWith("save10", expect.anything());
+    expect(res.error).toBeUndefined();
+    expect(useCartStore.getState().cart?.coupons).toHaveLength(1);
+    expect(useCartStore.getState().cart?.coupons[0].code).toBe("save10");
+    expect(useCartStore.getState().cartToken).toBe("tok_updated");
+  });
+
+  it("returns error message when coupon application fails", async () => {
+    (mockGetCart as jest.Mock).mockResolvedValue({ cart: makeCart(), cartToken: "tok" });
+    (mockApplyCoupon as jest.Mock).mockResolvedValue({
+      cart: null,
+      cartToken: "tok",
+      error: "Coupon is not valid or has expired",
+    });
+
+    let res: { error?: string } = {};
+    await act(async () => {
+      res = await useCartStore.getState().applyCoupon("expired_code");
+    });
+
+    expect(res.error).toBe("Coupon is not valid or has expired");
+  });
+});
+
+describe("useCartStore — removeCoupon", () => {
+  it("calls removeCoupon action and updates store", async () => {
+    const emptyCouponCart = makeCart({ coupons: [] });
+    (mockGetCart as jest.Mock).mockResolvedValue({
+      cart: makeCart({
+        coupons: [{ code: "save10", discount_type: "percent", totals: {} as any }],
+      }),
+      cartToken: "tok",
+    });
+    (mockRemoveCoupon as jest.Mock).mockResolvedValue({ cart: emptyCouponCart, cartToken: "tok" });
+
+    let res: { error?: string } = {};
+    await act(async () => {
+      res = await useCartStore.getState().removeCoupon("save10");
+    });
+
+    expect(mockRemoveCoupon).toHaveBeenCalledWith("save10", expect.anything());
+    expect(res.error).toBeUndefined();
+    expect(useCartStore.getState().cart?.coupons).toHaveLength(0);
+  });
+});
+

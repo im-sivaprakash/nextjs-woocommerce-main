@@ -1,10 +1,10 @@
 "use client";
 
-import { formatPrice } from "@/lib/utils/format";
+import { formatPrice, decodeHtml } from "@/lib/utils/format";
 import { Button } from "@/components/ui/defaultbutton";
 import { Separator } from "@/components/ui/separator";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/defaultcard";
-import { Lock } from "lucide-react";
+import { Lock, Tag } from "lucide-react";
 import { CartTotals } from "@/components/cart/cart-totals";
 import type { WooCart } from "@/lib/woocommerce/types";
 import { t } from "@/lib/i18n";
@@ -37,11 +37,11 @@ export function CheckoutOrderSummary({
           {cart.items.map((item) => (
             <div key={item.key} className="flex justify-between text-sm">
               <span className="text-muted-foreground">
-                {item.name} &times; {item.quantity}
+                {decodeHtml(item.name)} &times; {item.quantity}
               </span>
               <span>
                 {formatPrice(
-                  item.totals.line_total,
+                  item.totals.line_subtotal,
                   item.totals.currency_minor_unit,
                   item.totals.currency_prefix,
                   item.totals.currency_suffix
@@ -50,6 +50,36 @@ export function CheckoutOrderSummary({
             </div>
           ))}
         </div>
+
+        {/* Applied coupons */}
+        {cart.coupons?.length > 0 && (
+          <>
+            <Separator />
+            <div className="space-y-1.5">
+              {cart.coupons.map((coupon) => (
+                <div
+                  key={coupon.code}
+                  className="flex items-center justify-between text-sm"
+                >
+                  <span className="flex items-center gap-1.5 text-green-600 dark:text-green-400">
+                    <Tag className="h-3 w-3" />
+                    <span className="uppercase font-medium">{coupon.code}</span>
+                  </span>
+                  {coupon.totals?.total_discount && parseInt(coupon.totals.total_discount) > 0 && (
+                    <span className="text-green-600 dark:text-green-400 font-medium">
+                      {formatPrice(
+                        coupon.totals.total_discount,
+                        cart.totals.currency_minor_unit,
+                        cart.totals.currency_prefix,
+                        cart.totals.currency_suffix
+                      )}
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+          </>
+        )}
 
         <Separator />
 
@@ -72,6 +102,8 @@ export function CheckoutOrderSummary({
             ? t('checkout.processing')
             : isUpdatingAddress
             ? t('checkout.recalculating')
+            : !cart.needs_payment || parseInt(cart.totals?.total_price || "0") <= 0
+            ? t('checkout.freeOrder')
             : isStripeMethod
             ? t('checkout.payWithStripe')
             : isRazorpayMethod

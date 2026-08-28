@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { AddToCartForm } from "@/components/add-to-cart-form";
 import { StarRating } from "@/components/product/star-rating";
-import { formatProductPrice } from "@/lib/utils/format";
+import { formatProductPrice, decodeHtml } from "@/lib/utils/format";
 import { findMatchedVariation, buildSelectionFromVariation } from "@/lib/utils/product";
 import type { WooProduct } from "@/lib/woocommerce/types";
 import { Truck, RotateCcw, ShieldCheck, Award } from "lucide-react";
@@ -69,13 +69,13 @@ export function ProductInfo({ product, initialVariationId, initialVariationPrice
     <div className="space-y-5">
       {product.categories[0] && (
         <p className="text-xs tracking-[0.25em] uppercase text-[var(--gold)] font-medium">
-          {product.categories[0].name}
+          {decodeHtml(product.categories[0].name)}
         </p>
       )}
 
       <div>
         <h1 className="text-3xl md:text-4xl font-heading font-bold leading-tight mb-3">
-          {product.name}
+          {decodeHtml(product.name)}
         </h1>
         <StarRating rating={product.average_rating} count={product.review_count} />
       </div>

@@ -32,7 +32,8 @@ export async function createRazorpayCheckoutOrder(
   shipping: ShippingAddress,
   paymentMethod: string,
   lineItems: RazorpayLineItem[],
-  cartToken?: string
+  cartToken?: string,
+  totalAmountOverride?: number
 ): Promise<CreateRazorpayOrderResult | { error: string }> {
   // 1. Create the WC order so we get an order_id and billing/shipping is stored
   const wcRes = await checkoutOnServer(
@@ -54,11 +55,14 @@ export async function createRazorpayCheckoutOrder(
   const orderId = wcOrder.order_id;
   const orderKey = wcOrder.order_key;
 
-  // 2. Calculate total amount from line items
-  const totalAmount = lineItems.reduce(
-    (sum, item) => sum + item.unitAmount * item.quantity,
-    0
-  );
+  // 2. Calculate total amount (prefer explicit final total from cart if provided)
+  const totalAmount =
+    totalAmountOverride !== undefined && totalAmountOverride > 0
+      ? totalAmountOverride
+      : lineItems.reduce(
+          (sum, item) => sum + item.unitAmount * item.quantity,
+          0
+        );
   const currency = lineItems[0]?.currency?.toUpperCase() ?? "INR";
 
   // 3. Create Razorpay Order

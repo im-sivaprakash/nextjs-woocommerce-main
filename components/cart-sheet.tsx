@@ -4,7 +4,7 @@ import { ShoppingBag, X } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useCartStore } from "@/lib/store/cart-store";
-import { formatPrice } from "@/lib/utils/format";
+import { formatPrice, decodeHtml } from "@/lib/utils/format";
 import { Button, buttonVariants } from "@/components/ui/defaultbutton";
 import {
   Sheet,
@@ -75,7 +75,7 @@ export function CartSheet() {
                       {item.images[0] ? (
                         <Image
                           src={item.images[0].src}
-                          alt={item.images[0].alt || item.name}
+                          alt={item.images[0].alt || decodeHtml(item.name)}
                           fill
                           className="object-cover"
                           sizes="64px"
@@ -90,7 +90,7 @@ export function CartSheet() {
                     {/* Details */}
                     <div className="flex flex-1 flex-col min-w-0">
                       <div className="flex items-start justify-between gap-2">
-                        <p className="text-sm font-medium line-clamp-1 leading-snug">{item.name}</p>
+                        <p className="text-sm font-medium line-clamp-1 leading-snug">{decodeHtml(item.name)}</p>
                         <Button
                           variant="ghost"
                           size="icon"
@@ -127,7 +127,7 @@ export function CartSheet() {
 
                         <p className="text-sm font-semibold">
                           {formatPrice(
-                            item.totals.line_total,
+                            item.totals.line_subtotal,
                             item.totals.currency_minor_unit,
                             item.totals.currency_prefix,
                             item.totals.currency_suffix

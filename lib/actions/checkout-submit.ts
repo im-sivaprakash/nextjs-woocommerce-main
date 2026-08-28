@@ -86,10 +86,15 @@ export async function checkoutAction(
   if (!shippingResult.success) {
     const first = shippingResult.error.issues[0];
     return { type: "error", message: first?.message ?? "Invalid shipping details." };
-  }  const billing = billingResult.data;
+  }
+
+  const billing = billingResult.data;
   const shipping = shippingResult.data;
 
-  if (!paymentMethod) {
+  const isFreeOrder =
+    parseInt(cart.totals?.total_price || "0") <= 0 || !cart.needs_payment;
+
+  if (!isFreeOrder && !paymentMethod) {
     return { type: "error", message: "Please select a payment method." };
   }
 
@@ -115,16 +120,55 @@ export async function checkoutAction(
     return "Checkout failed. Please try again.";
   }
 
+  // ── Free Order / 100% Discounted (Total is 0) ────────────────────────────
+  if (isFreeOrder) {
+    const result = await checkout(
+      billing,
+      shipping,
+      paymentMethod || "other",
+      cartToken
+    );
+
+    if (result.error || !result.order) {
+      console.error("[checkoutAction] Free order checkout failed:", result.error);
+      return { type: "error", message: extractWooMessage(result.error) };
+    }
+
+    return {
+      type: "success",
+      orderId: result.order.order_id,
+      orderKey: result.order.order_key,
+      email: billing.email,
+    };
+  }
+
   // ── Route to payment provider ────────────────────────────────────────────
   const isStripeMethod = paymentMethod === "stripe_cc" || paymentMethod === "stripe";
 
   if (isStripeMethod) {
-    const lineItems = cart.items.map((item) => ({
-      name: item.name,
-      unitAmount: parseInt(item.prices.price),
-      quantity: item.quantity,
-      currency: item.prices.currency_code,
-    }));
+    const lineItems = cart.items.map((item) => {
+      const lineTotal = item.totals?.line_total
+        ? parseInt(item.totals.line_total)
+        : parseInt(item.prices.price) * item.quantity;
+      const unitAmount =
+        item.quantity > 0 ? Math.round(lineTotal / item.quantity) : parseInt(item.prices.price);
+      return {
+        name: item.name,
+        unitAmount,
+        quantity: item.quantity,
+        currency: item.prices?.currency_code ?? cart.totals.currency_code,
+      };
+    });
+
+    const shippingTotal = parseInt(cart.totals?.total_shipping || "0");
+    if (shippingTotal > 0) {
+      lineItems.push({
+        name: "Shipping",
+        unitAmount: shippingTotal,
+        quantity: 1,
+        currency: cart.totals.currency_code,
+      });
+    }
 
     const result = await createStripeOrder(
       billing,
@@ -146,19 +190,39 @@ export async function checkoutAction(
   const isRazorpayMethod = paymentMethod === "razorpay";
 
   if (isRazorpayMethod) {
-    const lineItems = cart.items.map((item) => ({
-      name: item.name,
-      unitAmount: parseInt(item.prices.price),
-      quantity: item.quantity,
-      currency: item.prices.currency_code,
-    }));
+    const lineItems = cart.items.map((item) => {
+      const lineTotal = item.totals?.line_total
+        ? parseInt(item.totals.line_total)
+        : parseInt(item.prices.price) * item.quantity;
+      const unitAmount =
+        item.quantity > 0 ? Math.round(lineTotal / item.quantity) : parseInt(item.prices.price);
+      return {
+        name: item.name,
+        unitAmount,
+        quantity: item.quantity,
+        currency: item.prices?.currency_code ?? cart.totals.currency_code,
+      };
+    });
+
+    const shippingTotal = parseInt(cart.totals?.total_shipping || "0");
+    if (shippingTotal > 0) {
+      lineItems.push({
+        name: "Shipping",
+        unitAmount: shippingTotal,
+        quantity: 1,
+        currency: cart.totals.currency_code,
+      });
+    }
+
+    const totalAmount = parseInt(cart.totals?.total_price || "0");
 
     const result = await createRazorpayCheckoutOrder(
       billing,
       shipping,
       paymentMethod,
       lineItems,
-      cartToken
+      cartToken,
+      totalAmount > 0 ? totalAmount : undefined
     );
 
     if ("error" in result) {

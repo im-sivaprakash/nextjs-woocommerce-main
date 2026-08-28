@@ -65,6 +65,25 @@ export const SelectShippingRateSchema = z.object({
   cartToken: z.string().max(512).optional(),
 });
 
+export const ApplyCouponSchema = z.object({
+  code: z
+    .string()
+    .trim()
+    .min(1, "Coupon code is required")
+    .max(50, "Coupon code is too long")
+    .regex(/^[a-zA-Z0-9_-]+$/, "Invalid coupon code format"),
+  cartToken: z.string().max(512).optional(),
+});
+
+export const RemoveCouponSchema = z.object({
+  code: z
+    .string()
+    .trim()
+    .min(1, "Coupon code is required")
+    .max(50, "Coupon code is too long"),
+  cartToken: z.string().max(512).optional(),
+});
+
 /** Combined client-side checkout form schema — used by React Hook Form. */
 export const CheckoutFormSchema = z.object({
   billing: BillingSchema,
