@@ -8,6 +8,7 @@ import { SearchBar } from "@/components/search-bar";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { CartSheet } from "@/components/cart-sheet";
 import { WishlistIcon } from "@/components/wishlist-icon";
+import { UserNav } from "@/components/auth/user-nav";
 import { Button } from "@/components/ui/defaultbutton";
 import {
   Sheet,
@@ -79,13 +80,14 @@ export function Header() {
         </div>
 
         {/* Actions */}
-        <div className="flex items-center gap-0.5">
+        <div className="flex items-center gap-1 sm:gap-2">
           <ThemeToggle />
           <WishlistIcon />
           <CartSheet />
+          <UserNav />
 
           {/* Mobile hamburger */}
-            <Sheet open={isMobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+          <Sheet open={isMobileMenuOpen} onOpenChange={setMobileMenuOpen}>
             <SheetTrigger
               render={
                 <Button
@@ -118,10 +120,10 @@ export function Header() {
                 aria-label={t("nav.mainLabel")}
               >
                 {NAV_LINKS.map(({ href, label }) => (
-                    <Link
-                      key={href}
-                      href={href}
-                      onClick={() => setMobileMenuOpen(false)}
+                  <Link
+                    key={href}
+                    href={href}
+                    onClick={() => setMobileMenuOpen(false)}
                     className={
                       "flex items-center gap-3 rounded-md px-3 py-3 text-base font-medium transition-colors " +
                       (pathname === href || pathname.startsWith(href + "?")
@@ -133,6 +135,17 @@ export function Header() {
                   </Link>
                 ))}
               </nav>
+
+              {/* Mobile Account Section */}
+              <div className="mt-auto border-t border-border/50 p-4 space-y-2">
+                <Link
+                  href="/account"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex items-center justify-center gap-2 w-full py-2.5 px-4 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
+                >
+                  My Account
+                </Link>
+              </div>
             </SheetContent>
           </Sheet>
         </div>
