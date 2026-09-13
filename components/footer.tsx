@@ -8,6 +8,8 @@ const SHOP_LINKS = [
 ];
 
 const HELP_LINKS = [
+  { href: "/account", label: "My Account" },
+  { href: "/account/orders", label: "My Orders" },
   { href: "/cart", label: t('footer.links.cart') },
   { href: "/checkout", label: t('footer.links.checkout') },
 ];
