@@ -17,10 +17,17 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  logging: {
+    fetches: {
+      fullUrl: true,
+    },
+  },
   images: {
     remotePatterns: [
       {
-        protocol: (process.env.NEXT_PUBLIC_WOOCOMMERCE_PROTCOL as "http" | "https") || "https",
+        protocol:
+          (process.env.NEXT_PUBLIC_WOOCOMMERCE_PROTCOL as "http" | "https") ||
+          "https",
         hostname: "" + process.env.NEXT_PUBLIC_WOOCOMMERCE_HOST,
       },
     ],

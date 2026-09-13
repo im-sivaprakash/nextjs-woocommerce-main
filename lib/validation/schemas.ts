@@ -43,6 +43,7 @@ export const AddToCartSchema = z.object({
   productId: z.number().int().positive(),
   quantity: z.number().int().min(1, "Quantity must be at least 1").max(999),
   cartToken: z.string().max(512).optional(),
+  nonce: z.string().max(512).optional(),
   variation: z
     .array(z.object({ attribute: z.string().max(200), value: z.string().max(200) }))
     .optional(),
@@ -52,17 +53,20 @@ export const UpdateCartItemSchema = z.object({
   key: z.string().min(1).max(200),
   quantity: z.number().int().min(0).max(999),
   cartToken: z.string().max(512).optional(),
+  nonce: z.string().max(512).optional(),
 });
 
 export const RemoveCartItemSchema = z.object({
   key: z.string().min(1).max(200),
   cartToken: z.string().max(512).optional(),
+  nonce: z.string().max(512).optional(),
 });
 
 export const SelectShippingRateSchema = z.object({
   packageId: z.number().int().min(0),
   rateId: z.string().min(1).max(200),
   cartToken: z.string().max(512).optional(),
+  nonce: z.string().max(512).optional(),
 });
 
 export const ApplyCouponSchema = z.object({
@@ -73,6 +77,7 @@ export const ApplyCouponSchema = z.object({
     .max(50, "Coupon code is too long")
     .regex(/^[a-zA-Z0-9_-]+$/, "Invalid coupon code format"),
   cartToken: z.string().max(512).optional(),
+  nonce: z.string().max(512).optional(),
 });
 
 export const RemoveCouponSchema = z.object({
@@ -82,6 +87,7 @@ export const RemoveCouponSchema = z.object({
     .min(1, "Coupon code is required")
     .max(50, "Coupon code is too long"),
   cartToken: z.string().max(512).optional(),
+  nonce: z.string().max(512).optional(),
 });
 
 /** Combined client-side checkout form schema — used by React Hook Form. */

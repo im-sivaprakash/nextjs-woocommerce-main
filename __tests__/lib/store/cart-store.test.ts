@@ -182,7 +182,7 @@ describe("useCartStore — updateItem", () => {
       await useCartStore.getState().updateItem("key-abc", 3);
     });
 
-    expect(mockUpdateCartItem).toHaveBeenCalledWith("key-abc", 3, expect.anything());
+    expect(mockUpdateCartItem).toHaveBeenCalledWith("key-abc", 3, expect.anything(), undefined);
     expect(useCartStore.getState().itemCount).toBe(3);
   });
 });
@@ -200,7 +200,7 @@ describe("useCartStore — removeItem", () => {
       await useCartStore.getState().removeItem("key-xyz");
     });
 
-    expect(mockRemoveFromCart).toHaveBeenCalledWith("key-xyz", expect.anything());
+    expect(mockRemoveFromCart).toHaveBeenCalledWith("key-xyz", expect.anything(), undefined);
     expect(useCartStore.getState().itemCount).toBe(0);
   });
 });
@@ -228,7 +228,7 @@ describe("useCartStore — applyCoupon", () => {
       res = await useCartStore.getState().applyCoupon("save10");
     });
 
-    expect(mockApplyCoupon).toHaveBeenCalledWith("save10", expect.anything());
+    expect(mockApplyCoupon).toHaveBeenCalledWith("save10", expect.anything(), undefined);
     expect(res.error).toBeUndefined();
     expect(useCartStore.getState().cart?.coupons).toHaveLength(1);
     expect(useCartStore.getState().cart?.coupons[0].code).toBe("save10");
@@ -268,7 +268,7 @@ describe("useCartStore — removeCoupon", () => {
       res = await useCartStore.getState().removeCoupon("save10");
     });
 
-    expect(mockRemoveCoupon).toHaveBeenCalledWith("save10", expect.anything());
+    expect(mockRemoveCoupon).toHaveBeenCalledWith("save10", expect.anything(), undefined);
     expect(res.error).toBeUndefined();
     expect(useCartStore.getState().cart?.coupons).toHaveLength(0);
   });

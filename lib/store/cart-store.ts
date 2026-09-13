@@ -9,9 +9,10 @@ import {
   removeCoupon as removeCouponAction,
 } from "@/lib/actions/cart";
 
-// ── Token helpers ─────────────────────────────────────────────────────────────
+// ── Token & Nonce helpers ───────────────────────────────────────────────────
 
 const CART_TOKEN_KEY = "cart-store";
+const CART_NONCE_KEY = "cart-nonce-store";
 
 const getStoredToken = (): string | undefined =>
   typeof window !== "undefined"
@@ -23,13 +24,29 @@ const saveToken = (token: string | null | undefined): void => {
     localStorage.setItem(CART_TOKEN_KEY, token);
 };
 
+const getStoredNonce = (): string | undefined =>
+  typeof window !== "undefined"
+    ? localStorage.getItem(CART_NONCE_KEY) || undefined
+    : undefined;
+
+const saveNonce = (nonce: string | null | undefined): void => {
+  if (typeof window !== "undefined" && nonce)
+    localStorage.setItem(CART_NONCE_KEY, nonce);
+};
+
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-type CartActionResult = { cart: WooCart | null; cartToken: string | null; error?: string };
+type CartActionResult = {
+  cart: WooCart | null;
+  cartToken: string | null;
+  nonce?: string | null;
+  error?: string;
+};
 
 export interface CartState {
   cart: WooCart | null;
   cartToken: string | undefined;
+  nonce: string | undefined;
   isLoading: boolean;
   isPending: boolean;
   itemCount: number;
@@ -61,16 +78,18 @@ export const useCartStore = create<CartState>((set, get) => {
   /** Apply a cart action result to the store. */
   const applyResult = (result: CartActionResult) => {
     if (result.cartToken) saveToken(result.cartToken);
+    if (result.nonce) saveNonce(result.nonce);
     set((s) => ({
       cart: result.cart ?? s.cart,
       cartToken: result.cartToken ?? s.cartToken,
+      nonce: result.nonce ?? s.nonce,
       itemCount: result.cart?.items_count ?? s.itemCount,
     }));
   };
 
   /** Wrap a mutation with isPending guards; ensures initCart has run first. */
   const withPending = async (
-    fn: (token: string | undefined) => Promise<CartActionResult>
+    fn: (token: string | undefined, nonce: string | undefined) => Promise<CartActionResult>
   ): Promise<CartActionResult> => {
     // If initCart has never been called (e.g. user clicks before the
     // CartStoreInitializer effect fires), kick it off and wait for it.
@@ -82,7 +101,8 @@ export const useCartStore = create<CartState>((set, get) => {
     set({ isPending: true });
     try {
       const token = get().cartToken ?? getStoredToken();
-      return await fn(token);
+      const nonce = get().nonce ?? getStoredNonce();
+      return await fn(token, nonce);
     } finally {
       set({ isPending: false });
     }
@@ -91,6 +111,7 @@ export const useCartStore = create<CartState>((set, get) => {
   return {
     cart: null,
     cartToken: undefined,
+    nonce: undefined,
     isLoading: true,
     isPending: false,
     itemCount: 0,
@@ -111,11 +132,14 @@ export const useCartStore = create<CartState>((set, get) => {
       const promise = (async () => {
         try {
           const storedToken = getStoredToken();
+          const storedNonce = getStoredNonce();
           const result = await getCartAction(storedToken);
           if (result.cartToken) saveToken(result.cartToken);
+          if (result.nonce) saveNonce(result.nonce);
           set({
             cart: result.cart ?? null,
             cartToken: result.cartToken ?? storedToken,
+            nonce: result.nonce ?? storedNonce,
             itemCount: result.cart?.items_count ?? 0,
             _initialized: true,
           });
@@ -134,56 +158,69 @@ export const useCartStore = create<CartState>((set, get) => {
 
     refreshCart: async () => {
       const token = get().cartToken ?? getStoredToken();
+      const storedNonce = get().nonce ?? getStoredNonce();
       const result = await getCartAction(token);
       if (result.cartToken) saveToken(result.cartToken);
+      if (result.nonce) saveNonce(result.nonce);
       set({
         cart: result.cart ?? null,
         cartToken: result.cartToken ?? token,
+        nonce: result.nonce ?? storedNonce,
         itemCount: result.cart?.items_count ?? 0,
       });
     },
 
     addItem: async (productId, quantity = 1, variation) => {
-      const result = await withPending((token) =>
-        addToCartAction(productId, quantity, token, variation)
+      const result = await withPending((token, nonce) =>
+        addToCartAction(productId, quantity, token, variation, nonce)
       );
       applyResult(result);
       return result.error ? { error: result.error } : {};
     },
 
     updateItem: async (key, quantity) => {
-      const result = await withPending((token) =>
-        updateCartItemAction(key, quantity, token)
+      const result = await withPending((token, nonce) =>
+        updateCartItemAction(key, quantity, token, nonce)
       );
       applyResult(result);
     },
 
     removeItem: async (key) => {
-      const result = await withPending((token) =>
-        removeFromCartAction(key, token)
+      const result = await withPending((token, nonce) =>
+        removeFromCartAction(key, token, nonce)
       );
       applyResult(result);
     },
 
     applyCoupon: async (code) => {
-      const result = await withPending((token) =>
-        applyCouponAction(code, token)
+      const result = await withPending((token, nonce) =>
+        applyCouponAction(code, token, nonce)
       );
       applyResult(result);
       return result.error ? { error: result.error } : {};
     },
 
     removeCoupon: async (code) => {
-      const result = await withPending((token) =>
-        removeCouponAction(code, token)
+      const result = await withPending((token, nonce) =>
+        removeCouponAction(code, token, nonce)
       );
       applyResult(result);
       return result.error ? { error: result.error } : {};
     },
 
     clearCart: () => {
-      if (typeof window !== "undefined") localStorage.removeItem(CART_TOKEN_KEY);
-      set({ cart: null, cartToken: undefined, itemCount: 0, _initialized: false, isLoading: true });
+      if (typeof window !== "undefined") {
+        localStorage.removeItem(CART_TOKEN_KEY);
+        localStorage.removeItem(CART_NONCE_KEY);
+      }
+      set({
+        cart: null,
+        cartToken: undefined,
+        nonce: undefined,
+        itemCount: 0,
+        _initialized: false,
+        isLoading: true,
+      });
     },
   };
 });

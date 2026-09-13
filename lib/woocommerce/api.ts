@@ -12,12 +12,36 @@ const REST_API_URL = `${WP_URL}/wp-json/wc/v3`;
 
 // ─── Store API helpers (cart / checkout / orders) ────────────────────────────
 
+/** Helper to extract Nonce from Response headers */
+export function extractNonce(res: Response): string | null {
+  return (
+    res.headers.get("Nonce") ||
+    res.headers.get("nonce") ||
+    res.headers.get("X-WC-Store-API-Nonce") ||
+    res.headers.get("x-wc-store-api-nonce") ||
+    null
+  );
+}
+
+/** Helper to extract Cart-Token from Response headers */
+export function extractCartToken(res: Response): string | null {
+  return (
+    res.headers.get("Cart-Token") ||
+    res.headers.get("cart-token") ||
+    null
+  );
+}
+
 /** Build headers for cart-mutating requests. */
-function cartHeaders(cartToken?: string): Record<string, string> {
+function cartHeaders(cartToken?: string, nonce?: string): Record<string, string> {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
   };
   if (cartToken) headers["Cart-Token"] = cartToken;
+  if (nonce) {
+    headers["Nonce"] = nonce;
+    headers["X-WC-Store-API-Nonce"] = nonce;
+  }
   return headers;
 }
 
@@ -25,13 +49,65 @@ async function cartFetch(
   url: string,
   body: unknown,
   cartToken?: string,
+  nonce?: string,
 ): Promise<Response> {
-  return fetch(url, {
+  let activeToken = cartToken;
+  let activeNonce = nonce;
+
+  // If nonce is missing, fetch the cart first to acquire session nonce and cart token
+  if (!activeNonce) {
+    try {
+      const initRes = await getCartFromServer(activeToken);
+      const initNonce = extractNonce(initRes);
+      const initToken = extractCartToken(initRes);
+      if (initNonce) activeNonce = initNonce;
+      if (initToken) activeToken = initToken;
+    } catch (err) {
+      console.warn("[cartFetch] Failed to pre-fetch cart nonce:", err);
+    }
+  }
+
+  let res = await fetch(url, {
     method: "POST",
-    headers: cartHeaders(cartToken),
+    headers: cartHeaders(activeToken, activeNonce),
     body: JSON.stringify(body),
     cache: "no-store",
   });
+
+  // If request failed with 401 missing or invalid nonce, fetch a fresh nonce and retry once
+  if (res.status === 401) {
+    try {
+      const cloned = res.clone();
+      const errJson = (await cloned.json().catch(() => null)) as {
+        code?: string;
+      } | null;
+      if (
+        errJson?.code === "woocommerce_rest_missing_nonce" ||
+        errJson?.code === "woocommerce_rest_invalid_nonce" ||
+        errJson?.code === "rest_cookie_invalid_nonce"
+      ) {
+        console.info(
+          "[cartFetch] Nonce missing/invalid. Refreshing nonce and retrying...",
+        );
+        const refreshRes = await getCartFromServer(activeToken);
+        const refreshedNonce = extractNonce(refreshRes);
+        const refreshedToken = extractCartToken(refreshRes);
+        if (refreshedNonce) activeNonce = refreshedNonce;
+        if (refreshedToken) activeToken = refreshedToken;
+
+        res = await fetch(url, {
+          method: "POST",
+          headers: cartHeaders(activeToken, activeNonce),
+          body: JSON.stringify(body),
+          cache: "no-store",
+        });
+      }
+    } catch (retryErr) {
+      console.warn("[cartFetch] Retry on nonce failure failed:", retryErr);
+    }
+  }
+
+  return res;
 }
 
 // ─── REST API v3 helpers (products) ──────────────────────────────────────────
@@ -431,7 +507,7 @@ export async function searchProducts(query: string): Promise<WooProduct[]> {
   return getProducts({ search: query, per_page: 20 });
 }
 
-// ─── Cart (Store API — unchanged) ───────────────────────────────────────────
+// ─── Cart (Store API) ───────────────────────────────────────────
 
 export async function getCartFromServer(cartToken?: string): Promise<Response> {
   return fetch(`${STORE_API_URL}/cart`, {
@@ -445,37 +521,51 @@ export async function addToCartOnServer(
   quantity: number,
   variation?: { attribute: string; value: string }[],
   cartToken?: string,
+  nonce?: string,
 ) {
   const body: Record<string, unknown> = { id: productId, quantity };
   if (variation) body.variation = variation;
-  return cartFetch(`${STORE_API_URL}/cart/add-item`, body, cartToken);
+  return cartFetch(`${STORE_API_URL}/cart/add-item`, body, cartToken, nonce);
 }
 
 export async function updateCartItemOnServer(
   key: string,
   quantity: number,
   cartToken?: string,
+  nonce?: string,
 ) {
   return cartFetch(
     `${STORE_API_URL}/cart/update-item`,
     { key, quantity },
     cartToken,
+    nonce,
   );
 }
 
-export async function removeCartItemOnServer(key: string, cartToken?: string) {
-  return cartFetch(`${STORE_API_URL}/cart/remove-item`, { key }, cartToken);
+export async function removeCartItemOnServer(
+  key: string,
+  cartToken?: string,
+  nonce?: string,
+) {
+  return cartFetch(
+    `${STORE_API_URL}/cart/remove-item`,
+    { key },
+    cartToken,
+    nonce,
+  );
 }
 
 export async function updateCustomerOnServer(
   billingAddress: Record<string, string>,
   shippingAddress: Record<string, string>,
   cartToken?: string,
+  nonce?: string,
 ) {
   return cartFetch(
     `${STORE_API_URL}/cart/update-customer`,
     { billing_address: billingAddress, shipping_address: shippingAddress },
     cartToken,
+    nonce,
   );
 }
 
@@ -483,29 +573,41 @@ export async function selectShippingRateOnServer(
   packageId: number,
   rateId: string,
   cartToken?: string,
+  nonce?: string,
 ) {
   return cartFetch(
     `${STORE_API_URL}/cart/select-shipping-rate`,
     { package_id: packageId, rate_id: rateId },
     cartToken,
+    nonce,
   );
 }
 
 // ─── Coupons (Store API) ────────────────────────────────────────────────────
 
-export async function applyCouponOnServer(code: string, cartToken?: string) {
+export async function applyCouponOnServer(
+  code: string,
+  cartToken?: string,
+  nonce?: string,
+) {
   return cartFetch(
     `${STORE_API_URL}/cart/apply-coupon`,
     { code },
     cartToken,
+    nonce,
   );
 }
 
-export async function removeCouponOnServer(code: string, cartToken?: string) {
+export async function removeCouponOnServer(
+  code: string,
+  cartToken?: string,
+  nonce?: string,
+) {
   return cartFetch(
     `${STORE_API_URL}/cart/remove-coupon`,
     { code },
     cartToken,
+    nonce,
   );
 }
 
@@ -533,12 +635,18 @@ export async function checkoutOnServer(
     payment_data?: { key: string; value: string }[];
   },
   cartToken?: string,
+  nonce?: string,
 ) {
   console.log(
     "[checkoutOnServer] Request body:",
     JSON.stringify(data, null, 2),
   );
-  const res = await cartFetch(`${STORE_API_URL}/checkout`, data, cartToken);
+  const res = await cartFetch(
+    `${STORE_API_URL}/checkout`,
+    data,
+    cartToken,
+    nonce,
+  );
   if (!res.ok) {
     const body = await res.clone().text();
     console.error("[checkoutOnServer] WooCommerce response", res.status, body);

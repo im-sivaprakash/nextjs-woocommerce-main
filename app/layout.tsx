@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono, Playfair_Display } from "next/font/google";
 import { ThemeProvider } from "@/components/theme-provider";
 import { CartStoreInitializer } from "@/components/cart-store-initializer";
+import { AuthStoreInitializer } from "@/components/auth/auth-store-initializer";
 import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
 import { Toaster } from "@/components/ui/sonner";
@@ -89,6 +90,7 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <CartStoreInitializer />
+          <AuthStoreInitializer />
           <Header />
           <main className="flex-1">{children}</main>
           <Footer />
