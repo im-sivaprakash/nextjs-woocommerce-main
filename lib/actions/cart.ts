@@ -10,6 +10,8 @@ import {
   updateCustomerOnServer,
   applyCouponOnServer,
   removeCouponOnServer,
+  extractCartToken,
+  extractNonce,
 } from "@/lib/woocommerce/api";
 import {
   AddToCartSchema,
@@ -23,25 +25,23 @@ import {
 import type { WooCart, WooCheckoutOrder, BillingAddress, ShippingAddress } from "@/lib/woocommerce/types";
 import { decodeHtml } from "@/lib/utils/format";
 
-function extractCartToken(response: Response): string | null {
-  return response.headers.get("Cart-Token") || response.headers.get("cart-token");
-}
-
 export async function getCart(cartToken?: string): Promise<{
   cart: WooCart | null;
   cartToken: string | null;
+  nonce: string | null;
   error?: string;
 }> {
   try {
     const res = await getCartFromServer(cartToken);
     const token = extractCartToken(res);
+    const nonce = extractNonce(res);
     if (!res.ok) {
-      return { cart: null, cartToken: token, error: `Failed to get cart: ${res.status}` };
+      return { cart: null, cartToken: token, nonce, error: `Failed to get cart: ${res.status}` };
     }
     const cart = (await res.json()) as WooCart;
-    return { cart, cartToken: token };
+    return { cart, cartToken: token, nonce };
   } catch (e) {
-    return { cart: null, cartToken: null, error: (e as Error).message };
+    return { cart: null, cartToken: null, nonce: null, error: (e as Error).message };
   }
 }
 
@@ -49,69 +49,75 @@ export async function addToCart(
   productId: number,
   quantity: number,
   cartToken?: string,
-  variation?: { attribute: string; value: string }[]
-): Promise<{ cart: WooCart | null; cartToken: string | null; error?: string }> {
-  const parsed = AddToCartSchema.safeParse({ productId, quantity, cartToken, variation });
+  variation?: { attribute: string; value: string }[],
+  nonce?: string
+): Promise<{ cart: WooCart | null; cartToken: string | null; nonce: string | null; error?: string }> {
+  const parsed = AddToCartSchema.safeParse({ productId, quantity, cartToken, nonce, variation });
   if (!parsed.success) {
-    return { cart: null, cartToken: null, error: parsed.error.issues[0]?.message ?? "Invalid input" };
+    return { cart: null, cartToken: null, nonce: null, error: parsed.error.issues[0]?.message ?? "Invalid input" };
   }
   try {
-    const { productId: pid, quantity: qty, variation: vars, cartToken: token } = parsed.data;
-    const res = await addToCartOnServer(pid, qty, vars, token);
+    const { productId: pid, quantity: qty, variation: vars, cartToken: token, nonce: n } = parsed.data;
+    const res = await addToCartOnServer(pid, qty, vars, token, n);
     const resToken = extractCartToken(res);
+    const resNonce = extractNonce(res);
     if (!res.ok) {
       const body = await res.text();
-      return { cart: null, cartToken: resToken, error: body };
+      return { cart: null, cartToken: resToken, nonce: resNonce, error: body };
     }
     const cart = (await res.json()) as WooCart;
-    return { cart, cartToken: resToken };
+    return { cart, cartToken: resToken, nonce: resNonce };
   } catch (e) {
-    return { cart: null, cartToken: null, error: (e as Error).message };
+    return { cart: null, cartToken: null, nonce: null, error: (e as Error).message };
   }
 }
 
 export async function updateCartItem(
   key: string,
   quantity: number,
-  cartToken?: string
-): Promise<{ cart: WooCart | null; cartToken: string | null; error?: string }> {
-  const parsed = UpdateCartItemSchema.safeParse({ key, quantity, cartToken });
+  cartToken?: string,
+  nonce?: string
+): Promise<{ cart: WooCart | null; cartToken: string | null; nonce: string | null; error?: string }> {
+  const parsed = UpdateCartItemSchema.safeParse({ key, quantity, cartToken, nonce });
   if (!parsed.success) {
-    return { cart: null, cartToken: null, error: parsed.error.issues[0]?.message ?? "Invalid input" };
+    return { cart: null, cartToken: null, nonce: null, error: parsed.error.issues[0]?.message ?? "Invalid input" };
   }
   try {
-    const res = await updateCartItemOnServer(parsed.data.key, parsed.data.quantity, parsed.data.cartToken);
+    const res = await updateCartItemOnServer(parsed.data.key, parsed.data.quantity, parsed.data.cartToken, parsed.data.nonce);
     const token = extractCartToken(res);
+    const resNonce = extractNonce(res);
     if (!res.ok) {
       const body = await res.text();
-      return { cart: null, cartToken: token, error: body };
+      return { cart: null, cartToken: token, nonce: resNonce, error: body };
     }
     const cart = (await res.json()) as WooCart;
-    return { cart, cartToken: token };
+    return { cart, cartToken: token, nonce: resNonce };
   } catch (e) {
-    return { cart: null, cartToken: null, error: (e as Error).message };
+    return { cart: null, cartToken: null, nonce: null, error: (e as Error).message };
   }
 }
 
 export async function removeFromCart(
   key: string,
-  cartToken?: string
-): Promise<{ cart: WooCart | null; cartToken: string | null; error?: string }> {
-  const parsed = RemoveCartItemSchema.safeParse({ key, cartToken });
+  cartToken?: string,
+  nonce?: string
+): Promise<{ cart: WooCart | null; cartToken: string | null; nonce: string | null; error?: string }> {
+  const parsed = RemoveCartItemSchema.safeParse({ key, cartToken, nonce });
   if (!parsed.success) {
-    return { cart: null, cartToken: null, error: parsed.error.issues[0]?.message ?? "Invalid input" };
+    return { cart: null, cartToken: null, nonce: null, error: parsed.error.issues[0]?.message ?? "Invalid input" };
   }
   try {
-    const res = await removeCartItemOnServer(parsed.data.key, parsed.data.cartToken);
+    const res = await removeCartItemOnServer(parsed.data.key, parsed.data.cartToken, parsed.data.nonce);
     const token = extractCartToken(res);
+    const resNonce = extractNonce(res);
     if (!res.ok) {
       const body = await res.text();
-      return { cart: null, cartToken: token, error: body };
+      return { cart: null, cartToken: token, nonce: resNonce, error: body };
     }
     const cart = (await res.json()) as WooCart;
-    return { cart, cartToken: token };
+    return { cart, cartToken: token, nonce: resNonce };
   } catch (e) {
-    return { cart: null, cartToken: null, error: (e as Error).message };
+    return { cart: null, cartToken: null, nonce: null, error: (e as Error).message };
   }
 }
 
@@ -120,8 +126,9 @@ export async function checkout(
   shippingAddress: ShippingAddress,
   paymentMethod: string,
   cartToken?: string,
-  paymentData?: { key: string; value: string }[]
-): Promise<{ order: WooCheckoutOrder | null; error?: string }> {
+  paymentData?: { key: string; value: string }[],
+  nonce?: string
+): Promise<{ order: WooCheckoutOrder | null; cartToken: string | null; nonce: string | null; error?: string }> {
   try {
     const res = await checkoutOnServer(
       {
@@ -130,65 +137,72 @@ export async function checkout(
         payment_method: paymentMethod,
         payment_data: paymentData,
       },
-      cartToken
+      cartToken,
+      nonce
     );
+    const resToken = extractCartToken(res);
+    const resNonce = extractNonce(res);
     if (!res.ok) {
       const body = await res.text();
       console.error("[checkout] WooCommerce checkout API error:", res.status, body);
-      return { order: null, error: body };
+      return { order: null, cartToken: resToken, nonce: resNonce, error: body };
     }
     const order = (await res.json()) as WooCheckoutOrder;
-    return { order };
+    return { order, cartToken: resToken, nonce: resNonce };
   } catch (e) {
     console.error("[checkout] Unexpected error:", (e as Error).message);
-    return { order: null, error: (e as Error).message };
+    return { order: null, cartToken: null, nonce: null, error: (e as Error).message };
   }
 }
 
 export async function updateCustomer(
   billingAddress: Record<string, string>,
   shippingAddress: Record<string, string>,
-  cartToken?: string
-): Promise<{ cart: WooCart | null; cartToken: string | null; error?: string }> {
+  cartToken?: string,
+  nonce?: string
+): Promise<{ cart: WooCart | null; cartToken: string | null; nonce: string | null; error?: string }> {
   const billingParsed = PartialAddressSchema.safeParse(billingAddress);
   const shippingParsed = PartialAddressSchema.safeParse(shippingAddress);
   if (!billingParsed.success || !shippingParsed.success) {
-    return { cart: null, cartToken: null, error: "Invalid address data" };
+    return { cart: null, cartToken: null, nonce: null, error: "Invalid address data" };
   }
   try {
-    const res = await updateCustomerOnServer(billingParsed.data, shippingParsed.data, cartToken);
+    const res = await updateCustomerOnServer(billingParsed.data, shippingParsed.data, cartToken, nonce);
     const token = extractCartToken(res);
+    const resNonce = extractNonce(res);
     if (!res.ok) {
       const body = await res.text();
-      return { cart: null, cartToken: token, error: body };
+      return { cart: null, cartToken: token, nonce: resNonce, error: body };
     }
     const cart = (await res.json()) as WooCart;
-    return { cart, cartToken: token };
+    return { cart, cartToken: token, nonce: resNonce };
   } catch (e) {
-    return { cart: null, cartToken: null, error: (e as Error).message };
+    return { cart: null, cartToken: null, nonce: null, error: (e as Error).message };
   }
 }
 
 export async function selectShippingRate(
   packageId: number,
   rateId: string,
-  cartToken?: string
-): Promise<{ cart: WooCart | null; cartToken: string | null; error?: string }> {
-  const parsed = SelectShippingRateSchema.safeParse({ packageId, rateId, cartToken });
+  cartToken?: string,
+  nonce?: string
+): Promise<{ cart: WooCart | null; cartToken: string | null; nonce: string | null; error?: string }> {
+  const parsed = SelectShippingRateSchema.safeParse({ packageId, rateId, cartToken, nonce });
   if (!parsed.success) {
-    return { cart: null, cartToken: null, error: parsed.error.issues[0]?.message ?? "Invalid input" };
+    return { cart: null, cartToken: null, nonce: null, error: parsed.error.issues[0]?.message ?? "Invalid input" };
   }
   try {
-    const res = await selectShippingRateOnServer(parsed.data.packageId, parsed.data.rateId, parsed.data.cartToken);
+    const res = await selectShippingRateOnServer(parsed.data.packageId, parsed.data.rateId, parsed.data.cartToken, parsed.data.nonce);
     const token = extractCartToken(res);
+    const resNonce = extractNonce(res);
     if (!res.ok) {
       const body = await res.text();
-      return { cart: null, cartToken: token, error: body };
+      return { cart: null, cartToken: token, nonce: resNonce, error: body };
     }
     const cart = (await res.json()) as WooCart;
-    return { cart, cartToken: token };
+    return { cart, cartToken: token, nonce: resNonce };
   } catch (e) {
-    return { cart: null, cartToken: null, error: (e as Error).message };
+    return { cart: null, cartToken: null, nonce: null, error: (e as Error).message };
   }
 }
 
@@ -205,44 +219,48 @@ function extractCouponErrorMessage(raw: string): string {
 
 export async function applyCoupon(
   code: string,
-  cartToken?: string
-): Promise<{ cart: WooCart | null; cartToken: string | null; error?: string }> {
-  const parsed = ApplyCouponSchema.safeParse({ code, cartToken });
+  cartToken?: string,
+  nonce?: string
+): Promise<{ cart: WooCart | null; cartToken: string | null; nonce: string | null; error?: string }> {
+  const parsed = ApplyCouponSchema.safeParse({ code, cartToken, nonce });
   if (!parsed.success) {
-    return { cart: null, cartToken: null, error: parsed.error.issues[0]?.message ?? "Invalid coupon code" };
+    return { cart: null, cartToken: null, nonce: null, error: parsed.error.issues[0]?.message ?? "Invalid coupon code" };
   }
   try {
-    const res = await applyCouponOnServer(parsed.data.code, parsed.data.cartToken);
+    const res = await applyCouponOnServer(parsed.data.code, parsed.data.cartToken, parsed.data.nonce);
     const token = extractCartToken(res);
+    const resNonce = extractNonce(res);
     if (!res.ok) {
       const body = await res.text();
-      return { cart: null, cartToken: token, error: extractCouponErrorMessage(body) };
+      return { cart: null, cartToken: token, nonce: resNonce, error: extractCouponErrorMessage(body) };
     }
     const cart = (await res.json()) as WooCart;
-    return { cart, cartToken: token };
+    return { cart, cartToken: token, nonce: resNonce };
   } catch (e) {
-    return { cart: null, cartToken: null, error: (e as Error).message };
+    return { cart: null, cartToken: null, nonce: null, error: (e as Error).message };
   }
 }
 
 export async function removeCoupon(
   code: string,
-  cartToken?: string
-): Promise<{ cart: WooCart | null; cartToken: string | null; error?: string }> {
-  const parsed = RemoveCouponSchema.safeParse({ code, cartToken });
+  cartToken?: string,
+  nonce?: string
+): Promise<{ cart: WooCart | null; cartToken: string | null; nonce: string | null; error?: string }> {
+  const parsed = RemoveCouponSchema.safeParse({ code, cartToken, nonce });
   if (!parsed.success) {
-    return { cart: null, cartToken: null, error: parsed.error.issues[0]?.message ?? "Invalid coupon code" };
+    return { cart: null, cartToken: null, nonce: null, error: parsed.error.issues[0]?.message ?? "Invalid coupon code" };
   }
   try {
-    const res = await removeCouponOnServer(parsed.data.code, parsed.data.cartToken);
+    const res = await removeCouponOnServer(parsed.data.code, parsed.data.cartToken, parsed.data.nonce);
     const token = extractCartToken(res);
+    const resNonce = extractNonce(res);
     if (!res.ok) {
       const body = await res.text();
-      return { cart: null, cartToken: token, error: extractCouponErrorMessage(body) };
+      return { cart: null, cartToken: token, nonce: resNonce, error: extractCouponErrorMessage(body) };
     }
     const cart = (await res.json()) as WooCart;
-    return { cart, cartToken: token };
+    return { cart, cartToken: token, nonce: resNonce };
   } catch (e) {
-    return { cart: null, cartToken: null, error: (e as Error).message };
+    return { cart: null, cartToken: null, nonce: null, error: (e as Error).message };
   }
 }

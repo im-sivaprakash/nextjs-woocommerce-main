@@ -58,7 +58,7 @@ export function UserNav() {
       await logout();
       toast.success("You have been logged out successfully.");
       setIsOpen(false);
-      router.push("/");
+      window.location.href = "/";
       router.refresh();
     } catch {
       toast.error("Logout failed. Please try again.");

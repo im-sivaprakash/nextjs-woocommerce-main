@@ -7,6 +7,7 @@ import {
   logoutAction,
   getAuthSessionAction,
 } from "@/lib/actions/auth";
+import { useCartStore } from "@/lib/store/cart-store";
 
 export interface AuthState {
   user: AuthUser | null;
@@ -55,13 +56,32 @@ export const useAuthStore = create<AuthState>((set) => ({
   login: async (input: LoginInput) => {
     set({ isLoading: true });
     try {
-      const result = await loginAction(input);
+      const currentCartToken =
+        useCartStore.getState().cartToken ||
+        (typeof window !== "undefined"
+          ? localStorage.getItem("cart-store") || undefined
+          : undefined);
+      const result = await loginAction(input, currentCartToken);
       if (result.success && result.user) {
         set({
           user: result.user,
           isAuthenticated: true,
           isLoading: false,
         });
+        const tokenToUse = result.cartToken || currentCartToken;
+        if (tokenToUse) {
+          if (typeof window !== "undefined") {
+            localStorage.setItem("cart-store", tokenToUse);
+          }
+          useCartStore.setState({ cartToken: tokenToUse });
+        }
+        if (result.nonce) {
+          if (typeof window !== "undefined") {
+            localStorage.setItem("cart-nonce-store", result.nonce);
+          }
+          useCartStore.setState({ nonce: result.nonce });
+        }
+        await useCartStore.getState().refreshCart();
       } else {
         set({ isLoading: false });
       }
@@ -101,12 +121,22 @@ export const useAuthStore = create<AuthState>((set) => ({
   logout: async () => {
     set({ isLoading: true });
     try {
-      const result = await logoutAction();
+      const currentCartToken =
+        useCartStore.getState().cartToken ||
+        (typeof window !== "undefined"
+          ? localStorage.getItem("cart-store") || undefined
+          : undefined);
+      const result = await logoutAction(currentCartToken);
       set({
         user: null,
         isAuthenticated: false,
         isLoading: false,
       });
+      useCartStore.getState().clearCart();
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("cart-store");
+        localStorage.removeItem("cart-nonce-store");
+      }
       return result;
     } catch {
       set({
@@ -114,6 +144,11 @@ export const useAuthStore = create<AuthState>((set) => ({
         isAuthenticated: false,
         isLoading: false,
       });
+      useCartStore.getState().clearCart();
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("cart-store");
+        localStorage.removeItem("cart-nonce-store");
+      }
       return {
         success: true,
         message: "Logged out locally",
