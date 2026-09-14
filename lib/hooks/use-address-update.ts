@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useTransition } from "react";
 import { useCartStore } from "@/lib/store/cart-store";
+import { useBuyNowStore } from "@/lib/store/buy-now-store";
 import { useCheckoutStore } from "@/lib/store/checkout-store";
 import { updateCustomer } from "@/lib/actions/cart";
 
@@ -14,7 +15,7 @@ import { updateCustomer } from "@/lib/actions/cart";
  * Returns `isUpdatingAddress` so the parent page can disable the submit button
  * and show a "Recalculating…" label while the API call is in flight.
  */
-export function useAddressUpdate(cartToken: string | null) {
+export function useAddressUpdate(cartToken: string | null, isBuyNow: boolean = false) {
   const [isUpdatingAddress, startAddressTransition] = useTransition();
   const { setSelectedPaymentMethod } = useCheckoutStore();
 
@@ -54,16 +55,31 @@ export function useAddressUpdate(cartToken: string | null) {
       const effective = same ? b : s;
 
       startAddressTransition(async () => {
+        const nonce = isBuyNow
+          ? useBuyNowStore.getState().buyNowNonce
+          : useCartStore.getState().nonce;
         const result = await updateCustomer(
           { ...b } as Record<string, string>,
           { ...effective } as Record<string, string>,
-          token
+          token,
+          nonce
         );
         if (result.cart) {
-          useCartStore.setState({ cart: result.cart, itemCount: result.cart.items_count });
-          if (result.cartToken) {
-            cartTokenRef.current = result.cartToken;
-            useCartStore.setState({ cartToken: result.cartToken });
+          if (isBuyNow) {
+            useBuyNowStore.setState({
+              buyNowCart: result.cart,
+              buyNowToken: result.cartToken ?? token,
+              buyNowNonce: result.nonce ?? nonce,
+            });
+          } else {
+            useCartStore.setState({ cart: result.cart, itemCount: result.cart.items_count });
+            if (result.cartToken) {
+              cartTokenRef.current = result.cartToken;
+              useCartStore.setState({ cartToken: result.cartToken });
+            }
+            if (result.nonce) {
+              useCartStore.setState({ nonce: result.nonce });
+            }
           }
           if (result.cart.payment_methods?.length) {
             const current = useCheckoutStore.getState().selectedPaymentMethod;
@@ -81,7 +97,7 @@ export function useAddressUpdate(cartToken: string | null) {
     // We intentionally omit cartTokenRef and setSelectedPaymentMethod — both are
     // stable references (ref object + Zustand setter) and must not re-trigger.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [shipCountry, shipState, shipCity, shipPost, sameAsShipping]);
+  }, [shipCountry, shipState, shipCity, shipPost, sameAsShipping, isBuyNow]);
 
   return { isUpdatingAddress };
 }

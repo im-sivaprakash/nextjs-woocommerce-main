@@ -26,6 +26,7 @@ export async function checkoutAction(
   let paymentMethod: string;
   let cartToken: string | undefined;
   const sameAsShipping = formData.get("sameAsShipping") === "1";
+  const isBuyNow = formData.get("isBuyNow") === "1" || formData.get("isBuyNow") === "true";
 
   const g = (key: string) => String(formData.get(key) ?? "");
 
@@ -74,6 +75,8 @@ export async function checkoutAction(
   } catch {
     return { type: "error", message: "Invalid form data. Please try again." };
   }
+
+  const nonce = (formData.get("nonce") as string) || undefined;
 
   // ── Validate with Zod ────────────────────────────────────────────────────
   const billingResult = BillingSchema.safeParse(rawBilling);
@@ -126,7 +129,9 @@ export async function checkoutAction(
       billing,
       shipping,
       paymentMethod || "other",
-      cartToken
+      cartToken,
+      undefined,
+      nonce
     );
 
     if (result.error || !result.order) {
@@ -175,7 +180,9 @@ export async function checkoutAction(
       shipping,
       paymentMethod,
       lineItems,
-      cartToken
+      cartToken,
+      nonce,
+      isBuyNow
     );
 
     if ("error" in result) {
@@ -222,7 +229,8 @@ export async function checkoutAction(
       paymentMethod,
       lineItems,
       cartToken,
-      totalAmount > 0 ? totalAmount : undefined
+      totalAmount > 0 ? totalAmount : undefined,
+      nonce
     );
 
     if ("error" in result) {
@@ -245,7 +253,14 @@ export async function checkoutAction(
   }
 
   // ── Non-Stripe (bacs, cod, cheque, etc.) ─────────────────────────────────
-  const result = await checkout(billing, shipping, paymentMethod || "cod", cartToken);
+  const result = await checkout(
+    billing,
+    shipping,
+    paymentMethod || "cod",
+    cartToken,
+    undefined,
+    nonce
+  );
 
   if (result.error || !result.order) {
     console.error("[checkoutAction] WooCommerce checkout failed:", result.error);
