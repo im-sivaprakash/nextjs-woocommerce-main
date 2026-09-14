@@ -33,7 +33,8 @@ export async function createRazorpayCheckoutOrder(
   paymentMethod: string,
   lineItems: RazorpayLineItem[],
   cartToken?: string,
-  totalAmountOverride?: number
+  totalAmountOverride?: number,
+  nonce?: string
 ): Promise<CreateRazorpayOrderResult | { error: string }> {
   // 1. Create the WC order so we get an order_id and billing/shipping is stored
   const wcRes = await checkoutOnServer(
@@ -42,7 +43,8 @@ export async function createRazorpayCheckoutOrder(
       shipping_address: shipping as unknown as Record<string, string>,
       payment_method: paymentMethod,
     },
-    cartToken
+    cartToken,
+    nonce
   );
 
   if (!wcRes.ok) {

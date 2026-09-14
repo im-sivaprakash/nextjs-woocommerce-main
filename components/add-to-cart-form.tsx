@@ -1,19 +1,20 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import type { WooProduct } from "@/lib/woocommerce/types";
 import { useCartStore } from "@/lib/store/cart-store";
+import { useBuyNowStore } from "@/lib/store/buy-now-store";
 import { toast } from "sonner";
 import { Button, buttonVariants } from "@/components/ui/defaultbutton";
 import { cn } from "@/lib/utils";
 import { sortTerms } from "@/lib/utils/product";
-import { ShoppingCart, ExternalLink, Check } from "lucide-react";
+import { ShoppingCart, ExternalLink, Check, ShoppingBag, Loader2 } from "lucide-react";
 import { WishlistButton } from "@/components/wishlist-button";
 import { QuantityInput } from "@/components/ui/quantity-input";
 import { trackAddToCart } from "@/lib/utils/gtm-events";
 import { productToEcommerceItem } from "@/lib/utils/gtm-items";
 import { t } from "@/lib/i18n";
-
 
 interface AddToCartFormProps {
   product: WooProduct;
@@ -55,9 +56,11 @@ function isTermInStock(
 }
 
 export function AddToCartForm({ product, variationId, selectedVariation, onVariationChange, variationInStock }: AddToCartFormProps) {
+  const router = useRouter();
   const { addItem, openCart } = useCartStore();
   const [quantity, setQuantity] = useState(product.add_to_cart.minimum || 1);
   const [isPending, startTransition] = useTransition();
+  const [isBuyNowPending, startBuyNowTransition] = useTransition();
   const [justAdded, setJustAdded] = useState(false);
 
   const min = product.add_to_cart.minimum || 1;
@@ -102,7 +105,52 @@ export function AddToCartForm({ product, variationId, selectedVariation, onVaria
         );
         setJustAdded(true);
         setTimeout(() => setJustAdded(false), 2000);
+        setQuantity(product.add_to_cart.minimum || 1);
         openCart();
+      }
+    });
+  }
+
+  function handleBuyNow() {
+    if (product.type === "external") {
+      window.open(product.external_url, "_blank", "noopener,noreferrer");
+      return;
+    }
+
+    // For variable products, ensure all attributes are selected
+    if (product.type === "variable" && product.attributes.length > 0) {
+      const variationAttrs = product.attributes.filter((a) => a.has_variations);
+      const allSelected = variationAttrs.every(
+        (attr) => selectedVariation[attr.name]
+      );
+      if (!allSelected) {
+        toast.error(t('product.selectAllOptions'));
+        return;
+      }
+    }
+
+    startBuyNowTransition(async () => {
+      const idToAdd = (product.type === "variable" && variationId) ? variationId : product.id;
+      const variationData = Object.entries(selectedVariation).map(([attribute, value]) => ({
+        attribute,
+        value,
+      }));
+
+      const result = await useBuyNowStore.getState().startBuyNow(
+        idToAdd,
+        quantity,
+        variationData.length > 0 ? variationData : undefined
+      );
+
+      if (result.error) {
+        toast.error(t('product.cantAddToCart'), { description: result.error });
+      } else {
+        trackAddToCart(
+          { ...productToEcommerceItem(product), item_id: String(variationId ?? product.id), quantity },
+          product.prices.currency_code
+        );
+        setQuantity(product.add_to_cart.minimum || 1);
+        router.push("/checkout?buy_now=1");
       }
     });
   }
@@ -196,17 +244,18 @@ export function AddToCartForm({ product, variationId, selectedVariation, onVaria
         />
       </div>
 
-      {/* Add to Cart + Wishlist */}
-      <div className="flex gap-2">
+      {/* Actions: Add to Cart + Buy Now + Wishlist */}
+      <div className="flex flex-col sm:flex-row gap-2.5 pt-1">
         <Button
           size="lg"
-          className="flex-1 transition-all"
+          variant="outline"
+          className="flex-1 transition-all border-border hover:border-foreground/40 font-medium"
           onClick={handleAddToCart}
-          disabled={!product.is_purchasable || !isInStock || isPending}
+          disabled={!product.is_purchasable || !isInStock || isPending || isBuyNowPending}
           aria-live="polite"
         >
           {justAdded ? (
-            <><Check className="mr-2 h-4 w-4" />{t('product.added')}</>
+            <><Check className="mr-2 h-4 w-4 text-emerald-500" />{t('product.added')}</>
           ) : isPending ? (
             <><ShoppingCart className="mr-2 h-4 w-4 animate-bounce" />{t('product.adding')}</>
           ) : !isInStock ? (
@@ -215,6 +264,20 @@ export function AddToCartForm({ product, variationId, selectedVariation, onVaria
             <><ShoppingCart className="mr-2 h-4 w-4" />{t('product.addToCart')}</>
           )}
         </Button>
+
+        <Button
+          size="lg"
+          className="flex-1 transition-all bg-primary hover:bg-primary/90 text-primary-foreground font-semibold shadow-sm"
+          onClick={handleBuyNow}
+          disabled={!product.is_purchasable || !isInStock || isPending || isBuyNowPending}
+        >
+          {isBuyNowPending ? (
+            <><Loader2 className="mr-2 h-4 w-4 animate-spin" />{t('product.buyingNow')}</>
+          ) : (
+            <><ShoppingBag className="mr-2 h-4 w-4" />{t('product.buyNow')}</>
+          )}
+        </Button>
+
         <WishlistButton product={product} size="default" />
       </div>
     </div>

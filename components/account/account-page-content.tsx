@@ -21,7 +21,8 @@ import { toast } from "sonner";
 
 export function AccountPageContent() {
   const router = useRouter();
-  const { user, isAuthenticated, isInitialized, logout, isLoading } = useAuthStore();
+  const { user, isAuthenticated, isInitialized, logout, isLoading } =
+    useAuthStore();
 
   useEffect(() => {
     if (isInitialized && !isAuthenticated) {
@@ -33,7 +34,7 @@ export function AccountPageContent() {
     try {
       await logout();
       toast.success("Signed out successfully");
-      router.push("/");
+      window.location.href = "/";
       router.refresh();
     } catch {
       toast.error("Logout failed. Please try again.");
@@ -44,13 +45,19 @@ export function AccountPageContent() {
     return (
       <div className="container mx-auto px-4 py-16 flex flex-col items-center justify-center min-h-[50vh]">
         <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
-        <p className="text-sm text-muted-foreground">Loading your account details...</p>
+        <p className="text-sm text-muted-foreground">
+          Loading your account details...
+        </p>
       </div>
     );
   }
 
   const displayName =
-    user?.firstName || user?.displayName || user?.username || user?.email || "Customer";
+    user?.firstName ||
+    user?.displayName ||
+    user?.username ||
+    user?.email ||
+    "Customer";
 
   const initials = (
     user?.firstName
@@ -73,7 +80,10 @@ export function AccountPageContent() {
                   {user?.displayName || displayName}
                 </h1>
                 {user?.roles && user.roles.length > 0 && (
-                  <Badge variant="secondary" className="capitalize text-xs font-semibold">
+                  <Badge
+                    variant="secondary"
+                    className="capitalize text-xs font-semibold"
+                  >
                     {user.roles[0]}
                   </Badge>
                 )}
@@ -85,7 +95,10 @@ export function AccountPageContent() {
               {user?.registeredDate && (
                 <p className="text-xs text-muted-foreground/80 mt-1 flex items-center gap-1.5">
                   <Calendar className="w-3.5 h-3.5" />
-                  <span>Member since {new Date(user.registeredDate).toLocaleDateString()}</span>
+                  <span>
+                    Member since{" "}
+                    {new Date(user.registeredDate).toLocaleDateString()}
+                  </span>
                 </p>
               )}
             </div>
@@ -184,14 +197,18 @@ export function AccountPageContent() {
             <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
               Display Name
             </span>
-            <p className="font-medium text-foreground">{user?.displayName || "—"}</p>
+            <p className="font-medium text-foreground">
+              {user?.displayName || "—"}
+            </p>
           </div>
 
           <div className="space-y-1">
             <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
               Username
             </span>
-            <p className="font-medium text-foreground">{user?.username || "—"}</p>
+            <p className="font-medium text-foreground">
+              {user?.username || "—"}
+            </p>
           </div>
 
           <div className="space-y-1">

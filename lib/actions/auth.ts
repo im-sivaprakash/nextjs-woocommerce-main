@@ -113,7 +113,9 @@ export async function loginAction(
 
       const merged = mergeCartItems(guestItems, persistentItems);
 
-      if (merged.length > 0) {
+      // Only items from the user's saved account cart need to be added to the current session,
+      // because guestItems are already present in activeCartToken.
+      if (persistentItems.length > 0) {
         // If we don't have activeNonce yet, initialize the cart session first
         if (!activeNonce) {
           try {
@@ -127,7 +129,7 @@ export async function loginAction(
           }
         }
 
-        for (const item of merged) {
+        for (const item of persistentItems) {
           try {
             // First attempt: with variation array if present
             let addRes = await addToCartOnServer(
@@ -157,32 +159,28 @@ export async function loginAction(
             if (!addRes.ok) {
               const errBody = await addRes.text();
               console.warn(
-                `[loginAction] Failed to add merged item ${item.id} to cart:`,
+                `[loginAction] Failed to add persistent item ${item.id} to cart:`,
                 errBody
               );
             }
           } catch (addErr) {
             console.warn(
-              `[loginAction] Error adding merged item ${item.id} to cart:`,
+              `[loginAction] Error adding persistent item ${item.id} to cart:`,
               addErr
             );
           }
         }
+      }
 
-        if (activeCartToken) {
-          finalCartToken = activeCartToken;
-        }
-        if (activeNonce) {
-          finalNonce = activeNonce;
-        }
+      if (activeCartToken) {
+        finalCartToken = activeCartToken;
+      }
+      if (activeNonce) {
+        finalNonce = activeNonce;
+      }
 
-        if (!isNaN(userId) && userId > 0) {
-          await saveUserCart(userId, merged);
-        }
-      } else {
-        if (activeNonce) {
-          finalNonce = activeNonce;
-        }
+      if (merged.length > 0 && !isNaN(userId) && userId > 0) {
+        await saveUserCart(userId, merged);
       }
     } catch (mergeErr) {
       console.error("[loginAction] Persistent cart merge error:", mergeErr);

@@ -5,11 +5,35 @@
  * mocked so the test suite stays fast and deterministic.
  */
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { ProductCard } from "@/components/product-card";
+import { useCartStore } from "@/lib/store/cart-store";
 import { makeProduct } from "../fixtures";
 
 // ── Mocks ─────────────────────────────────────────────────────────────────────
+
+const mockPush = jest.fn();
+jest.mock("next/navigation", () => ({
+  useRouter: () => ({ push: mockPush }),
+}));
+
+const mockAddItem = jest.fn();
+const mockOpenCart = jest.fn();
+jest.mock("@/lib/store/cart-store", () => ({
+  useCartStore: jest.fn(() => ({
+    addItem: mockAddItem,
+    openCart: mockOpenCart,
+  })),
+}));
+
+const mockStartBuyNow = jest.fn();
+jest.mock("@/lib/store/buy-now-store", () => ({
+  useBuyNowStore: {
+    getState: () => ({
+      startBuyNow: mockStartBuyNow,
+    }),
+  },
+}));
 
 jest.mock("next/image", () => ({
   __esModule: true,
@@ -37,6 +61,7 @@ jest.mock("next/link", () => ({
 
 jest.mock("@/lib/utils/gtm-events", () => ({
   trackSelectItem: jest.fn(),
+  trackAddToCart: jest.fn(),
 }));
 
 jest.mock("@/lib/store/wishlist-store", () => ({
@@ -45,7 +70,16 @@ jest.mock("@/lib/store/wishlist-store", () => ({
   ),
 }));
 
-jest.mock("sonner", () => ({ toast: jest.fn() }));
+jest.mock("sonner", () => ({ toast: Object.assign(jest.fn(), { error: jest.fn() }) }));
+
+beforeEach(() => {
+  jest.clearAllMocks();
+  mockAddItem.mockResolvedValue({ error: undefined });
+  (useCartStore as unknown as jest.Mock).mockReturnValue({
+    addItem: mockAddItem,
+    openCart: mockOpenCart,
+  });
+});
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
@@ -107,9 +141,11 @@ describe("ProductCard", () => {
     expect(screen.queryByText("Sale")).not.toBeInTheDocument();
   });
 
-  it("renders a Sold Out badge when out of stock", () => {
+  it("renders a Sold Out badge and disabled buttons when out of stock", () => {
     render(<ProductCard product={makeProduct({ is_in_stock: false })} />);
-    expect(screen.getByText("Sold Out")).toBeInTheDocument();
+    expect(screen.getAllByText("Sold Out").length).toBeGreaterThan(0);
+    const buttons = screen.getAllByRole("button");
+    expect(buttons.some((b) => b.hasAttribute("disabled"))).toBe(true);
   });
 
   it("renders the product image with correct alt text", () => {
@@ -140,6 +176,24 @@ describe("ProductCard", () => {
 
   it("links to the correct product URL", () => {
     render(<ProductCard product={makeProduct({ slug: "rose-oud" })} />);
-    expect(screen.getByRole("link")).toHaveAttribute("href", "/product/rose-oud");
+    const links = screen.getAllByRole("link");
+    expect(links.some((l) => l.getAttribute("href") === "/product/rose-oud")).toBe(true);
+  });
+
+  it("calls addItem and openCart when Add to Cart button is clicked", async () => {
+    render(<ProductCard product={makeProduct({ id: 15 })} />);
+    const addBtn = screen.getByRole("button", { name: /Add to Cart/i });
+    fireEvent.click(addBtn);
+    await waitFor(() => expect(mockAddItem).toHaveBeenCalledWith(15, 1));
+    expect(mockOpenCart).toHaveBeenCalled();
+  });
+
+  it("calls startBuyNow and navigates to /checkout?buy_now=1 when Buy Now button is clicked", async () => {
+    mockStartBuyNow.mockResolvedValue({ cart: {} });
+    render(<ProductCard product={makeProduct({ id: 15 })} />);
+    const buyNowBtn = screen.getByRole("button", { name: /Buy Now/i });
+    fireEvent.click(buyNowBtn);
+    await waitFor(() => expect(mockStartBuyNow).toHaveBeenCalledWith(15, 1));
+    expect(mockPush).toHaveBeenCalledWith("/checkout?buy_now=1");
   });
 });

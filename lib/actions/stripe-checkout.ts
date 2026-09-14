@@ -25,7 +25,9 @@ export async function createStripeOrder(
   shipping: ShippingAddress,
   stripePaymentMethod: string, // e.g. "stripe_cc"
   lineItems: StripeLineItem[],
-  cartToken?: string
+  cartToken?: string,
+  nonce?: string,
+  isBuyNow?: boolean
 ): Promise<CreateStripeOrderResult | { error: string }> {
   // 1. Create the WC order so we get an order_id and billing/shipping is stored
   const wcRes = await checkoutOnServer(
@@ -34,7 +36,8 @@ export async function createStripeOrder(
       shipping_address: shipping as unknown as Record<string, string>,
       payment_method: stripePaymentMethod,
     },
-    cartToken
+    cartToken,
+    nonce
   );
 
   if (!wcRes.ok) {
@@ -52,6 +55,8 @@ export async function createStripeOrder(
     process.env.NEXT_PUBLIC_APP_URL ??
     `http://localhost:${process.env.PORT ?? 3000}`;
 
+  const buyNowParam = isBuyNow ? "&buy_now=1" : "";
+
   let session;
   try {
     session = await createStripeCheckoutSession({
@@ -65,7 +70,7 @@ export async function createStripeOrder(
         quantity: item.quantity,
       })),
       customerEmail: billing.email,
-      successUrl: `${appUrl}/order-confirmation?session_id={CHECKOUT_SESSION_ID}&order_id=${orderId}&order_key=${encodeURIComponent(orderKey)}&billing_email=${encodeURIComponent(billing.email)}`,
+      successUrl: `${appUrl}/order-confirmation?session_id={CHECKOUT_SESSION_ID}&order_id=${orderId}&order_key=${encodeURIComponent(orderKey)}&billing_email=${encodeURIComponent(billing.email)}${buyNowParam}`,
       cancelUrl: `${appUrl}/checkout`,
     });
   } catch (err) {

@@ -221,4 +221,36 @@ describe("OrderConfirmationParamsSchema", () => {
       expect(result.data.order_key).toBeUndefined();
     }
   });
+
+  it("accepts valid buy_now flag ('1' or 'true')", () => {
+    const res1 = OrderConfirmationParamsSchema.safeParse({
+      order_id: "42",
+      buy_now: "1",
+    });
+    expect(res1.success).toBe(true);
+    if (res1.success) {
+      expect(res1.data.buy_now).toBe("1");
+    }
+
+    const res2 = OrderConfirmationParamsSchema.safeParse({
+      order_id: "42",
+      buy_now: "true",
+    });
+    expect(res2.success).toBe(true);
+    if (res2.success) {
+      expect(res2.data.buy_now).toBe("true");
+    }
+  });
+
+  it("coerces invalid buy_now values to undefined", () => {
+    const res = OrderConfirmationParamsSchema.safeParse({
+      order_id: "42",
+      buy_now: "invalid",
+    });
+    expect(res.success).toBe(true);
+    if (res.success) {
+      expect(res.data.buy_now).toBeUndefined();
+    }
+  });
 });
+
