@@ -182,7 +182,8 @@ export async function checkoutAction(
       lineItems,
       cartToken,
       nonce,
-      isBuyNow
+      isBuyNow,
+      cart
     );
 
     if ("error" in result) {
@@ -230,7 +231,8 @@ export async function checkoutAction(
       lineItems,
       cartToken,
       totalAmount > 0 ? totalAmount : undefined,
-      nonce
+      nonce,
+      cart
     );
 
     if ("error" in result) {

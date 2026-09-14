@@ -653,3 +653,42 @@ export async function checkoutOnServer(
   }
   return res;
 }
+
+export async function createWooOrderOnServer(orderData: {
+  payment_method?: string;
+  payment_method_title?: string;
+  set_paid?: boolean;
+  status?: string;
+  billing?: Record<string, string>;
+  shipping?: Record<string, string>;
+  line_items?: Array<{
+    product_id?: number;
+    variation_id?: number;
+    quantity: number;
+    name?: string;
+  }>;
+  shipping_lines?: Array<{
+    method_id: string;
+    method_title: string;
+    total: string;
+  }>;
+  coupon_lines?: Array<{
+    code: string;
+  }>;
+}) {
+  console.log(
+    "[createWooOrderOnServer] Creating WC order via REST API v3:",
+    JSON.stringify(orderData, null, 2),
+  );
+  const res = await restApiFetch("/orders", {
+    method: "POST",
+    body: JSON.stringify(orderData),
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    const body = await res.clone().text();
+    console.error("[createWooOrderOnServer] WooCommerce REST API response:", res.status, body);
+  }
+  return res;
+}
+
