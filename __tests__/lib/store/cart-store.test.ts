@@ -257,7 +257,13 @@ describe("useCartStore — removeCoupon", () => {
     const emptyCouponCart = makeCart({ coupons: [] });
     (mockGetCart as jest.Mock).mockResolvedValue({
       cart: makeCart({
-        coupons: [{ code: "save10", discount_type: "percent", totals: {} as any }],
+        coupons: [
+          {
+            code: "save10",
+            discount_type: "percent",
+            totals: { total_discount: "0", total_discount_tax: "0", currency_code: "USD" },
+          },
+        ],
       }),
       cartToken: "tok",
     });

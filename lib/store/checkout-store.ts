@@ -11,7 +11,7 @@ const emptyBilling: BillingAddress = {
   city: "",
   state: "",
   postcode: "",
-  country: "US",
+  country: "IN",
   email: "",
   phone: "",
 };
@@ -25,7 +25,7 @@ const emptyShipping: ShippingAddress = {
   city: "",
   state: "",
   postcode: "",
-  country: "US",
+  country: "IN",
 };
 
 interface CheckoutState {
@@ -68,6 +68,7 @@ export const useCheckoutStore = create<CheckoutState>()(
     }),
     {
       name: "checkout-store",
+      version: 2,
       // Only persist data fields, not the action functions
       partialize: (state) => ({
         billing: state.billing,
@@ -75,6 +76,21 @@ export const useCheckoutStore = create<CheckoutState>()(
         sameAsShipping: state.sameAsShipping,
         selectedPaymentMethod: state.selectedPaymentMethod,
       }),
+      migrate: (persistedState: unknown, version: number) => {
+        const state = persistedState as CheckoutState;
+        if (version < 2) {
+          // If legacy state had "US" as default without a filled street address, migrate to "IN"
+          if (state.billing?.country === "US" && !state.billing?.address_1) {
+            state.billing.country = "IN";
+            state.billing.state = "";
+          }
+          if (state.shipping?.country === "US" && !state.shipping?.address_1) {
+            state.shipping.country = "IN";
+            state.shipping.state = "";
+          }
+        }
+        return state;
+      },
     }
   )
 );

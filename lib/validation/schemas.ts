@@ -2,31 +2,72 @@ import { z } from "zod";
 
 // ── Address schemas (shared by checkout form and cart actions) ────────────────
 
-export const BillingSchema = z.object({
-  first_name: z.string().min(1, "First name is required"),
-  last_name: z.string().min(1, "Last name is required"),
-  company: z.string().default(""),
-  address_1: z.string().min(1, "Address is required"),
-  address_2: z.string().default(""),
-  city: z.string().min(1, "City is required"),
-  state: z.string().default(""),
-  postcode: z.string().min(1, "Postcode is required"),
-  country: z.string().min(2, "Country is required"),
-  email: z.email("Please enter a valid email address"),
-  phone: z.string().default(""),
-});
+export const BillingSchema = z
+  .object({
+    first_name: z.string().min(1, "First name is required"),
+    last_name: z.string().min(1, "Last name is required"),
+    company: z.string().default(""),
+    address_1: z.string().min(1, "Address is required"),
+    address_2: z.string().default(""),
+    city: z.string().min(1, "City is required"),
+    state: z.string().default(""),
+    postcode: z
+      .string()
+      .trim()
+      .regex(/^\d{6}$/, "Postcode must be a 6-digit number"),
+    country: z
+      .string()
+      .trim()
+      .length(2, "Country is required")
+      .regex(/^[A-Za-z]{2}$/, "Invalid country code")
+      .transform((v) => v.toUpperCase()),
+    email: z.email("Please enter a valid email address"),
+    phone: z.string().default(""),
+  })
+  .superRefine((data, ctx) => {
+    // If country is India (IN), state is strictly required by WooCommerce
+    if (data.country === "IN" && (!data.state || data.state.trim() === "")) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["state"],
+        message: "State is required",
+      });
+    }
+  });
 
-export const ShippingSchema = z.object({
-  first_name: z.string().default(""),
-  last_name: z.string().default(""),
-  company: z.string().default(""),
-  address_1: z.string().default(""),
-  address_2: z.string().default(""),
-  city: z.string().default(""),
-  state: z.string().default(""),
-  postcode: z.string().default(""),
-  country: z.string().default(""),
-});
+export const ShippingSchema = z
+  .object({
+    first_name: z.string().default(""),
+    last_name: z.string().default(""),
+    company: z.string().default(""),
+    address_1: z.string().default(""),
+    address_2: z.string().default(""),
+    city: z.string().default(""),
+    state: z.string().default(""),
+    postcode: z
+      .string()
+      .default("")
+      .refine((val) => val === "" || /^\d{6}$/.test(val.trim()), {
+        message: "Postcode must be a 6-digit number",
+      }),
+    country: z
+      .string()
+      .default("")
+      .refine((val) => val === "" || /^[A-Za-z]{2}$/.test(val.trim()), {
+        message: "Invalid country code",
+      })
+      .transform((v) => v.toUpperCase()),
+  })
+  .superRefine((data, ctx) => {
+    // If country is India (IN) and shipping address is provided, state is required
+    if (data.country === "IN" && data.address_1 && (!data.state || data.state.trim() === "")) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["state"],
+        message: "State is required",
+      });
+    }
+  });
 
 /**
  * Loose address schema used for shipping estimate updates — all fields optional

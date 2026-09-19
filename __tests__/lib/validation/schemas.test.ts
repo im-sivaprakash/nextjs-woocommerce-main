@@ -15,14 +15,14 @@ describe("BillingSchema", () => {
     first_name: "Jane",
     last_name: "Doe",
     company: "",
-    address_1: "123 Main St",
+    address_1: "123 Anna Salai",
     address_2: "",
-    city: "New York",
-    state: "NY",
-    postcode: "10001",
-    country: "US",
+    city: "Chennai",
+    state: "TN",
+    postcode: "600001",
+    country: "IN",
     email: "jane@example.com",
-    phone: "+1 555 000 0000",
+    phone: "+91 98765 43210",
   };
 
   it("accepts a valid billing object", () => {
@@ -43,6 +43,57 @@ describe("BillingSchema", () => {
   it("rejects missing country", () => {
     const result = BillingSchema.safeParse({ ...validBilling, country: "" });
     expect(result.success).toBe(false);
+  });
+
+  it("rejects invalid country code format (non 2-letter)", () => {
+    expect(BillingSchema.safeParse({ ...validBilling, country: "IND" }).success).toBe(false);
+    expect(BillingSchema.safeParse({ ...validBilling, country: "I" }).success).toBe(false);
+    expect(BillingSchema.safeParse({ ...validBilling, country: "12" }).success).toBe(false);
+  });
+
+  it("transforms lowercase country code to uppercase", () => {
+    const result = BillingSchema.safeParse({ ...validBilling, country: "in" });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.country).toBe("IN");
+    }
+  });
+
+  // Postcode 6-digit client requirement tests
+  it("accepts exactly 6-digit numeric postcode", () => {
+    const result = BillingSchema.safeParse({ ...validBilling, postcode: "600001" });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects fewer than 6 digits postcode", () => {
+    const result = BillingSchema.safeParse({ ...validBilling, postcode: "60000" });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects more than 6 digits postcode", () => {
+    const result = BillingSchema.safeParse({ ...validBilling, postcode: "6000001" });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects alphabetic characters in postcode", () => {
+    const result = BillingSchema.safeParse({ ...validBilling, postcode: "60000A" });
+    expect(result.success).toBe(false);
+  });
+
+  // State requirement tests
+  it("rejects empty state for India (IN)", () => {
+    const result = BillingSchema.safeParse({ ...validBilling, country: "IN", state: "" });
+    expect(result.success).toBe(false);
+  });
+
+  it("accepts empty state for countries with zero states (e.g. UAE)", () => {
+    const result = BillingSchema.safeParse({
+      ...validBilling,
+      country: "AE",
+      state: "",
+      postcode: "123456",
+    });
+    expect(result.success).toBe(true);
   });
 
   it("defaults company to empty string when not supplied", () => {
@@ -66,16 +117,30 @@ describe("ShippingSchema", () => {
     }
   });
 
-  it("accepts a fully populated shipping object", () => {
+  it("accepts a fully populated shipping object with 6-digit postcode", () => {
     const result = ShippingSchema.safeParse({
       first_name: "John",
       last_name: "Smith",
       address_1: "1 Park Ave",
-      city: "Boston",
-      postcode: "02108",
-      country: "US",
+      city: "Chennai",
+      state: "TN",
+      postcode: "600002",
+      country: "IN",
     });
     expect(result.success).toBe(true);
+  });
+
+  it("rejects invalid postcode format in populated shipping object", () => {
+    const result = ShippingSchema.safeParse({
+      first_name: "John",
+      last_name: "Smith",
+      address_1: "1 Park Ave",
+      city: "Chennai",
+      state: "TN",
+      postcode: "12345", // only 5 digits
+      country: "IN",
+    });
+    expect(result.success).toBe(false);
   });
 });
 

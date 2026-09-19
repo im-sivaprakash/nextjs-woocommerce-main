@@ -1,25 +1,64 @@
 "use client";
 
+import * as React from "react";
 import { useCheckoutStore } from "@/lib/store/checkout-store";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
+import { CountryCombobox } from "@/components/ui/combobox";
 import { t } from "@/lib/i18n";
-import type { BillingAddress, ShippingAddress } from "@/lib/woocommerce/types";
+import { sanitizePostcodeInput } from "@/lib/validation/postcode";
+import { FALLBACK_COUNTRIES } from "@/lib/woocommerce/countries-fallback";
+import type { BillingAddress, ShippingAddress, WooCountry } from "@/lib/woocommerce/types";
 
 interface AddressFieldsProps {
   namePrefix: "billing" | "shipping";
   /** When true, also renders company, email, and phone fields (billing only). */
   showContactFields?: boolean;
+  /** WooCommerce countries list. Falls back to default list if not provided. */
+  countries?: WooCountry[];
 }
 
-export function AddressFields({ namePrefix, showContactFields = false }: AddressFieldsProps) {
+export function AddressFields({
+  namePrefix,
+  showContactFields = false,
+  countries = FALLBACK_COUNTRIES,
+}: AddressFieldsProps) {
   const { updateBilling, updateShipping } = useCheckoutStore();
-  const address = useCheckoutStore((s) => namePrefix === "billing" ? s.billing : s.shipping);
+  const address = useCheckoutStore((s) => (namePrefix === "billing" ? s.billing : s.shipping));
   const update =
     namePrefix === "billing"
       ? (f: string, v: string) => updateBilling(f as keyof BillingAddress, v)
       : (f: string, v: string) => updateShipping(f as keyof ShippingAddress, v);
 
   const htmlId = (f: string) => `${namePrefix}_${f}`;
+
+  const countriesList = countries && countries.length > 0 ? countries : FALLBACK_COUNTRIES;
+  const currentCountryCode = (address.country || "IN").toUpperCase();
+
+  // Find country in list; if not found, match case-insensitively or default to India
+  const selectedCountry =
+    countriesList.find((c) => c.code.toUpperCase() === currentCountryCode) ||
+    countriesList.find((c) => c.code.toUpperCase() === "IN") ||
+    countriesList[0];
+
+  const hasStates = Boolean(
+    selectedCountry && Array.isArray(selectedCountry.states) && selectedCountry.states.length > 0
+  );
+
+  const handleCountryChange = (newCountryCode: string) => {
+    const newCountry = newCountryCode.toUpperCase();
+    if (newCountry !== currentCountryCode) {
+      update("country", newCountry);
+      // Crucial: Reset state when country changes to prevent invalid country/state combinations
+      update("state", "");
+    }
+  };
+
+  const handlePostcodeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // Current client requirement: enforce 6-digit numeric PIN code
+    const sanitized = sanitizePostcodeInput(e.target.value);
+    update("postcode", sanitized);
+  };
 
   function field(fieldName: string) {
     return {
@@ -84,34 +123,77 @@ export function AddressFields({ namePrefix, showContactFields = false }: Address
         <Input {...field("address_2")} placeholder={t("checkout.fields.aptPlaceholder")} />
       </div>
 
+      {/* Searchable Country Combobox (placed before State/City for intuitive geographic cascade) */}
+      <div>
+        <label htmlFor={htmlId("country")} className="text-sm font-medium mb-1 block">
+          {t("checkout.fields.country")}
+        </label>
+        <CountryCombobox
+          id={htmlId("country")}
+          name={htmlId("country")}
+          value={selectedCountry?.code || currentCountryCode}
+          onValueChange={handleCountryChange}
+          countries={countriesList}
+          aria-label={t("checkout.fields.country")}
+        />
+      </div>
+
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        {/* Dynamic State / Province field */}
+        <div>
+          <label htmlFor={htmlId("state")} className="text-sm font-medium mb-1 block">
+            {t("checkout.fields.state")}
+          </label>
+          {hasStates && selectedCountry ? (
+            <Select
+              id={htmlId("state")}
+              name={htmlId("state")}
+              value={address.state ?? ""}
+              onChange={(e) => update("state", e.target.value)}
+              aria-label={t("checkout.fields.state")}
+            >
+              <option value="">{t("checkout.fields.selectState")}</option>
+              {selectedCountry.states.map((s) => (
+                <option key={s.code} value={s.code}>
+                  {s.name}
+                </option>
+              ))}
+            </Select>
+          ) : (
+            <Input
+              id={htmlId("state")}
+              name={htmlId("state")}
+              value={address.state ?? ""}
+              onChange={(e) => update("state", e.target.value)}
+              placeholder={t("checkout.fields.stateFallbackPlaceholder")}
+            />
+          )}
+        </div>
+
         <div>
           <label htmlFor={htmlId("city")} className="text-sm font-medium mb-1 block">
             {t("checkout.fields.city")}
           </label>
           <Input {...field("city")} placeholder={t("checkout.fields.cityPlaceholder")} />
         </div>
-        <div>
-          <label htmlFor={htmlId("state")} className="text-sm font-medium mb-1 block">
-            {t("checkout.fields.state")}
-          </label>
-          <Input {...field("state")} placeholder={t("checkout.fields.statePlaceholder")} />
-        </div>
+
         <div>
           <label htmlFor={htmlId("postcode")} className="text-sm font-medium mb-1 block">
             {t("checkout.fields.postcode")}
           </label>
-          <Input {...field("postcode")} placeholder={t("checkout.fields.postcodePlaceholder")} />
+          <Input
+            id={htmlId("postcode")}
+            name={htmlId("postcode")}
+            value={address.postcode ?? ""}
+            onChange={handlePostcodeChange}
+            placeholder={t("checkout.fields.postcodePlaceholder")}
+            inputMode="numeric"
+            maxLength={6}
+            pattern="[0-9]{6}"
+            autoComplete="postal-code"
+          />
         </div>
-      </div>
-
-      <div>
-        <label htmlFor={htmlId("country")} className="text-sm font-medium mb-1 block">
-          {t("checkout.fields.country")}
-        </label>
-        <Input {...field("country")} placeholder={t("checkout.fields.countryPlaceholder")} />
       </div>
     </div>
   );
 }
-

@@ -4,8 +4,13 @@ import { useCheckoutStore } from "@/lib/store/checkout-store";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/defaultcard";
 import { AddressFields } from "@/components/checkout/address-fields";
 import { t } from "@/lib/i18n";
+import type { WooCountry } from "@/lib/woocommerce/types";
 
-export function ShippingAddressForm() {
+interface ShippingAddressFormProps {
+  countries?: WooCountry[];
+}
+
+export function ShippingAddressForm({ countries }: ShippingAddressFormProps) {
   const { sameAsShipping, setSameAsShipping } = useCheckoutStore();
 
   return (
@@ -24,7 +29,7 @@ export function ShippingAddressForm() {
           <span className="text-sm">{t('checkout.sameAsBilling')}</span>
         </label>
 
-        {!sameAsShipping && <AddressFields namePrefix="shipping" />}
+        {!sameAsShipping && <AddressFields namePrefix="shipping" countries={countries} />}
       </CardContent>
     </Card>
   );

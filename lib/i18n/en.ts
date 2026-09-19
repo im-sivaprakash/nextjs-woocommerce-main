@@ -4,11 +4,12 @@
  * key into lib/i18n/custom.ts.
  */
 export const en: Record<string, string> = {
-  "lang": "en",
+  lang: "en",
 
   "brand.name": "Next.js WooCommerce",
   "brand.tagline": "Fine Fragrances",
-  "brand.description": "Premium fragrances crafted for the discerning connoisseur. Each bottle tells a story.",
+  "brand.description":
+    "Premium fragrances crafted for the discerning connoisseur. Each bottle tells a story.",
   "brand.copyright": "All rights reserved.",
   "brand.fineLine": "Fine fragrances for every occasion.",
 
@@ -21,7 +22,8 @@ export const en: Record<string, string> = {
   "footer.shopHeading": "Shop",
   "footer.accountHeading": "Account",
   "footer.contactHeading": "Contact",
-  "footer.contactBody": "Questions? Our team is here to help you find your perfect scent.",
+  "footer.contactBody":
+    "Questions? Our team is here to help you find your perfect scent.",
   "footer.links.allProducts": "All Products",
   "footer.links.sale": "Sale",
   "footer.links.bestSellers": "Best Sellers",
@@ -40,7 +42,8 @@ export const en: Record<string, string> = {
   "cart.pageTitle": "Shopping Cart",
   "cart.sheetTitle": "Your Cart",
   "cart.emptyTitle": "Your Cart is Empty",
-  "cart.emptyHint": "Looks like you haven\u2019t added anything to your cart yet.",
+  "cart.emptyHint":
+    "Looks like you haven\u2019t added anything to your cart yet.",
   "cart.emptySheetHint": "Discover our collection of fine fragrances.",
   "cart.shopAll": "Shop All Fragrances",
   "cart.continueShopping": "Continue Shopping",
@@ -62,7 +65,8 @@ export const en: Record<string, string> = {
   "wishlist.itemSingular": "item",
   "wishlist.itemPlural": "items",
   "wishlist.emptyTitle": "Your wishlist is empty",
-  "wishlist.emptyHint": "Save your favourite fragrances here so you can find them easily later.",
+  "wishlist.emptyHint":
+    "Save your favourite fragrances here so you can find them easily later.",
   "wishlist.browseCollection": "Browse the Collection",
   "wishlist.clearAll": "Clear all",
   "wishlist.wishlistCleared": "Wishlist cleared",
@@ -88,7 +92,8 @@ export const en: Record<string, string> = {
   "product.selectOptions": "Select Options",
   "product.outOfStock": "Out of Stock",
   "product.buyProduct": "Buy Product",
-  "product.groupedHint": "This is a grouped product. View individual items in the shop.",
+  "product.groupedHint":
+    "This is a grouped product. View individual items in the shop.",
   "product.browseProducts": "Browse Products",
   "product.quantity": "Quantity",
   "product.inStock": "In Stock",
@@ -125,7 +130,8 @@ export const en: Record<string, string> = {
   "shop.sortBy": "Sort by",
   "shop.showSaleOnly": "Show Sale Only",
   "shop.clearOnSale": "Clear: On Sale",
-  "shop.noProducts": "No products found. Please check your store configuration.",
+  "shop.noProducts":
+    "No products found. Please check your store configuration.",
   "shop.paginationLabel": "Pagination",
   "shop.paginationFirst": "First page",
   "shop.paginationPrev": "Previous page",
@@ -140,23 +146,30 @@ export const en: Record<string, string> = {
   "home.hero.heading1": "WooCoommerce",
   "home.hero.heading2": "headless Next.js",
   "home.hero.heading3": "storefront",
-  "home.hero.description": "Premium fragrances crafted for the discerning connoisseur.\n Explore our curated collection of timeless scents.",
+  "home.hero.description":
+    "Premium fragrances crafted for the discerning connoisseur.\n Explore our curated collection of timeless scents.",
   "home.hero.shopNow": "Shop Now",
   "home.hero.viewSale": "View Sale",
 
   "home.trust.natural.title": "CDN Performance",
-  "home.trust.natural.desc": "Pages pre-rendered and served from the edge — no server round-trips for the first load.",
+  "home.trust.natural.desc":
+    "Pages pre-rendered and served from the edge — no server round-trips for the first load.",
   "home.trust.crafted.title": "Stripe Payments",
-  "home.trust.crafted.desc": "PCI-compliant checkout with 3D Secure via Stripe, synced to WooCommerce on confirmation.",
+  "home.trust.crafted.desc":
+    "PCI-compliant checkout with 3D Secure via Stripe, synced to WooCommerce on confirmation.",
   "home.trust.quality.title": "GA4 Analytics",
-  "home.trust.quality.desc": "Full Enhanced Ecommerce funnel — every event, complete dataLayer, zero missed conversions.",
+  "home.trust.quality.desc":
+    "Full Enhanced Ecommerce funnel — every event, complete dataLayer, zero missed conversions.",
   "home.trust.shipping.title": "Type-Safe Stack",
-  "home.trust.shipping.desc": "TypeScript and Zod at every boundary, with Jest + React Testing Library coverage.",
+  "home.trust.shipping.desc":
+    "TypeScript and Zod at every boundary, with Jest + React Testing Library coverage.",
 
   "home.featured.title": "Featured Fragrances",
-  "home.featured.description": "Explore our curated collection of timeless scents.",
+  "home.featured.description":
+    "Explore our curated collection of timeless scents.",
   "home.featured.viewAll": "View All",
-  "home.featured.noProducts": "No products found. Please check your store configuration.",
+  "home.featured.noProducts":
+    "No products found. Please check your store configuration.",
 
   "home.onSale.eyebrow": "Limited Time",
   "home.onSale.heading": "On Sale",
@@ -164,11 +177,13 @@ export const en: Record<string, string> = {
 
   "home.brandStory.eyebrow": "Our Philosophy",
   "home.brandStory.heading": "Scent Is the Memory of the Soul",
-  "home.brandStory.description": "Every fragrance in our collection is a journey \u2014 blending rare botanicals,\n            precious resins, and timeless accords into something unforgettable.",
+  "home.brandStory.description":
+    "Every fragrance in our collection is a journey \u2014 blending rare botanicals,\n            precious resins, and timeless accords into something unforgettable.",
   "home.brandStory.cta": "Explore the Collection",
 
   "checkout.pageTitle": "Checkout",
-  "checkout.pageDescription": "Complete your order securely at Next.js WooCommerce.",
+  "checkout.pageDescription":
+    "Complete your order securely at Next.js WooCommerce.",
   "checkout.loadingCart": "Loading your cart...",
   "checkout.emptyTitle": "Your Cart is Empty",
   "checkout.emptyHint": "Add some items to your cart before checking out.",
@@ -196,15 +211,22 @@ export const en: Record<string, string> = {
   "checkout.payment.paypal": "PayPal",
   "checkout.payment.razorpay": "Razorpay",
 
-  "checkout.paymentDesc.bacs": "Make your payment directly into our bank account. Please use your order number as the payment reference. Your order will not be shipped until the funds have cleared in our account.",
-  "checkout.paymentDesc.cheque": "Please send a check to our store postal address. Your order will not be shipped until the funds have cleared.",
+  "checkout.paymentDesc.bacs":
+    "Make your payment directly into our bank account. Please use your order number as the payment reference. Your order will not be shipped until the funds have cleared in our account.",
+  "checkout.paymentDesc.cheque":
+    "Please send a check to our store postal address. Your order will not be shipped until the funds have cleared.",
   "checkout.paymentDesc.cod": "Pay with cash upon delivery.",
-  "checkout.paymentDesc.stripe": "Pay securely with your credit or debit card via Stripe.",
-  "checkout.paymentDesc.stripe_cc": "Pay securely with your credit or debit card via Stripe.",
-  "checkout.paymentDesc.paypal": "Pay via PayPal; you will be redirected to the PayPal site.",
-  "checkout.paymentDesc.razorpay": "Pay securely via Razorpay. Supports UPI, cards, wallets, and net banking.",
+  "checkout.paymentDesc.stripe":
+    "Pay securely with your credit or debit card via Stripe.",
+  "checkout.paymentDesc.stripe_cc":
+    "Pay securely with your credit or debit card via Stripe.",
+  "checkout.paymentDesc.paypal":
+    "Pay via PayPal; you will be redirected to the PayPal site.",
+  "checkout.paymentDesc.razorpay":
+    "Pay securely via Razorpay. Supports UPI, cards, wallets, and net banking.",
 
-  "checkout.stripeRedirect": "You will be redirected to Stripe\u2019s secure checkout.",
+  "checkout.stripeRedirect":
+    "You will be redirected to Stripe\u2019s secure checkout.",
   "checkout.razorpayModal": "A secure Razorpay payment window will open.",
   "checkout.payWithRazorpay": "Pay with Razorpay",
   "checkout.razorpayVerifying": "Verifying payment\u2026",
@@ -239,19 +261,28 @@ export const en: Record<string, string> = {
   "checkout.fields.phonePlaceholder": "+1 234 567 8900",
   "checkout.fields.streetPlaceholder": "Street address",
   "checkout.fields.aptPlaceholder": "Apartment, suite, etc.",
-  "checkout.fields.cityPlaceholder": "e.g. Warsaw",
-  "checkout.fields.statePlaceholder": "e.g. NY",
-  "checkout.fields.postcodePlaceholder": "e.g. 91-311",
-  "checkout.fields.countryPlaceholder": "e.g. PL, US, GB",
+  "checkout.fields.cityPlaceholder": "e.g. Delhi",
+  "checkout.fields.statePlaceholder": "e.g. Tamil Nadu",
+  "checkout.fields.postcodePlaceholder": "e.g. 600001",
+  "checkout.fields.countryPlaceholder": "Select a country",
+  "checkout.fields.selectCountry": "Select country...",
+  "checkout.fields.countrySearchPlaceholder": "Search country...",
+  "checkout.fields.noCountriesFound": "No countries found",
+  "checkout.fields.selectState": "Select state / province...",
+  "checkout.fields.stateFallbackPlaceholder": "State / Province / Emirate",
 
   "orderConfirmation.confirmedTitle": "Order Confirmed!",
   "orderConfirmation.pendingTitle": "Payment Pending",
   "orderConfirmation.failureTitle": "Payment Not Completed",
   "orderConfirmation.orderNumber": "Your order number is",
-  "orderConfirmation.successBody": "Thank you for your purchase. You will receive an order confirmation email shortly.",
-  "orderConfirmation.pendingBody": "Your payment is being processed. We will send you an email confirmation once the funds have cleared \u2014 this can take 1\u20133 business days depending on your payment method.",
-  "orderConfirmation.failureVerifyBody": "There was an issue verifying your payment. If you were charged, please contact support.",
-  "orderConfirmation.failureBody": "Your payment was not completed. Please try again or contact support.",
+  "orderConfirmation.successBody":
+    "Thank you for your purchase. You will receive an order confirmation email shortly.",
+  "orderConfirmation.pendingBody":
+    "Your payment is being processed. We will send you an email confirmation once the funds have cleared \u2014 this can take 1\u20133 business days depending on your payment method.",
+  "orderConfirmation.failureVerifyBody":
+    "There was an issue verifying your payment. If you were charged, please contact support.",
+  "orderConfirmation.failureBody":
+    "Your payment was not completed. Please try again or contact support.",
   "orderConfirmation.continueShopping": "Continue Shopping",
   "orderConfirmation.returnToCheckout": "Return to Checkout",
   "orderConfirmation.orderSummaryTitle": "Order Summary",
@@ -265,8 +296,8 @@ export const en: Record<string, string> = {
 
   "notFound.code": "404",
   "notFound.title": "Page Not Found",
-  "notFound.description": "The page you\u2019re looking for doesn\u2019t exist or has been moved.",
+  "notFound.description":
+    "The page you\u2019re looking for doesn\u2019t exist or has been moved.",
   "notFound.goHome": "Go Home",
   "notFound.browseShop": "Browse Shop",
 };
-

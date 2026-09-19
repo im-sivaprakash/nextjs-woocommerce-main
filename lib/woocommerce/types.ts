@@ -430,3 +430,17 @@ export interface ShippingAddress {
   postcode: string;
   country: string;
 }
+
+// ─── Country & State Data (REST API v3 /data/countries) ──────────────────────
+
+export interface WooCountryState {
+  code: string;
+  name: string;
+}
+
+export interface WooCountry {
+  code: string;
+  name: string;
+  states: WooCountryState[];
+  _links?: Record<string, unknown>;
+}

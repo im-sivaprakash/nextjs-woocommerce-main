@@ -4,7 +4,11 @@ import type {
   WooV3Product,
   WooV3Variation,
   CurrencySettings,
+  WooCountry,
 } from "./types";
+import { decodeHtml } from "@/lib/utils/format";
+import { FALLBACK_COUNTRIES } from "./countries-fallback";
+import { filterCountries } from "@/lib/config/countries";
 
 const WP_URL = `${process.env.NEXT_PUBLIC_WOOCOMMERCE_PROTCOL}://${process.env.NEXT_PUBLIC_WOOCOMMERCE_HOST}`;
 const STORE_API_URL = `${WP_URL}/wp-json/wc/store/v1`;
@@ -692,3 +696,33 @@ export async function createWooOrderOnServer(orderData: {
   return res;
 }
 
+// ─── Countries & States (REST API v3) ───────────────────────────────────────
+
+/**
+ * Fetches all countries and states from WooCommerce REST API v3 (/data/countries).
+ * Cached via Next.js Data Cache (revalidate: 86400 / 24 hours).
+ * Falls back gracefully to FALLBACK_COUNTRIES if the backend is unreachable.
+ * Applies application-level filterCountries() configuration.
+ */
+export async function getCountries(): Promise<WooCountry[]> {
+  try {
+    const raw = await restApiFetchJson<WooCountry[]>(
+      "/data/countries",
+      { next: { revalidate: 86400 } }
+    );
+
+    const decoded = raw.map((c) => ({
+      code: c.code,
+      name: decodeHtml(c.name),
+      states: (c.states || []).map((s) => ({
+        code: s.code,
+        name: decodeHtml(s.name),
+      })),
+    }));
+
+    return filterCountries(decoded);
+  } catch (err) {
+    console.error("[getCountries] Failed to fetch countries from WooCommerce:", err);
+    return filterCountries(FALLBACK_COUNTRIES);
+  }
+}
