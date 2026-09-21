@@ -7,6 +7,7 @@ export interface AuthUser {
   lastName?: string;
   roles?: string[];
   registeredDate?: string;
+  avatarUrl?: string;
 }
 
 export interface AuthTokens {

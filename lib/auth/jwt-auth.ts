@@ -137,13 +137,30 @@ function extractErrorMessage(json: unknown, status: number): string {
 export function normalizeAuthUser(raw: Record<string, unknown>): AuthUser {
   const id = (raw.id ?? raw.ID ?? raw.user_id ?? "") as string | number;
   const email = String(raw.email ?? raw.user_email ?? "");
-  const username = String(raw.login ?? raw.user_login ?? raw.username ?? email);
+  const rawUsername = String(raw.login ?? raw.user_login ?? raw.username ?? email);
   const firstName = String(raw.first_name ?? raw.firstName ?? "");
   const lastName = String(raw.last_name ?? raw.lastName ?? "");
-  const displayName = (raw.display_name ??
+  const avatarUrl = (raw.avatar_url ?? raw.avatarUrl ?? raw.picture ?? raw.image) as string | undefined;
+
+  // Clean placeholder username (like user_66fa...)
+  let username = rawUsername;
+  if (/^user_[a-z0-9_]+$/i.test(rawUsername) && email) {
+    username = email.split("@")[0];
+  }
+
+  let displayName = (raw.display_name ??
     raw.displayName ??
     raw.nicename ??
     (firstName ? `${firstName} ${lastName}`.trim() : username || email)) as string;
+
+  // Clean placeholder display name (like user_66fa...)
+  if (/^user_[a-z0-9_]+$/i.test(displayName)) {
+    if (firstName) {
+      displayName = `${firstName} ${lastName}`.trim();
+    } else if (email) {
+      displayName = email.split("@")[0];
+    }
+  }
 
   let roles: string[] = [];
   if (Array.isArray(raw.roles)) {
@@ -161,10 +178,11 @@ export function normalizeAuthUser(raw: Record<string, unknown>): AuthUser {
     email,
     username,
     displayName: displayName || email,
-    firstName,
-    lastName,
+    firstName: firstName || undefined,
+    lastName: lastName || undefined,
     roles,
     registeredDate: (raw.registered ?? raw.user_registered ?? raw.date_created) as string | undefined,
+    avatarUrl: avatarUrl || undefined,
   };
 }
 
@@ -530,6 +548,130 @@ export async function loginUserOnServer(params: {
     return {
       success: false,
       message: error instanceof Error ? error.message : "Failed to authenticate with WordPress",
+    };
+  }
+}
+
+/**
+ * Authenticate with Google id_token via Simple JWT Login native OAuth endpoint.
+ */
+export async function loginWithGoogleOnServer(idToken: string): Promise<{
+  success: boolean;
+  message?: string;
+  tokens?: AuthTokens;
+  user?: AuthUser;
+}> {
+  if (!idToken || typeof idToken !== "string") {
+    return {
+      success: false,
+      message: "Google ID token is required",
+    };
+  }
+
+  const googleClaims = decodeJwtPayload(idToken);
+  const googleEmail = (googleClaims?.email as string) || "";
+  const googleName = (googleClaims?.name as string) || "";
+  const googleFirstName = (googleClaims?.given_name as string) || "";
+  const googleLastName = (googleClaims?.family_name as string) || "";
+  const googlePicture = (googleClaims?.picture as string) || "";
+
+  const authKey = getAuthKey();
+  const url = getJwtApiUrl("oauth/token?provider=google");
+
+  const body: Record<string, unknown> = {
+    id_token: idToken,
+  };
+  if (authKey) {
+    body.AUTH_KEY = authKey;
+  }
+
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+      cache: "no-store",
+    });
+
+    const json = (await res.json().catch(() => null)) as Record<string, unknown> | null;
+
+    if (res.ok && json?.success !== false) {
+      const dataObj = json?.data as Record<string, unknown> | undefined;
+      const jwt = (dataObj?.jwt || json?.jwt) as string | undefined;
+      const refreshToken = (dataObj?.refresh_token || json?.refresh_token) as string | undefined;
+
+      if (jwt) {
+        let user: AuthUser | undefined;
+        const rawUserData = (dataObj?.user || json?.user) as Record<string, unknown> | undefined;
+        if (rawUserData) {
+          user = normalizeAuthUser(rawUserData);
+        } else {
+          const payload = decodeJwtPayload(jwt);
+          if (payload) {
+            const payloadData = payload.data as Record<string, unknown> | undefined;
+            const payloadUser = payloadData?.user as Record<string, unknown> | undefined;
+
+            user = normalizeAuthUser({
+              id: payload.id || payload.sub || payloadUser?.id || payload.user_id,
+              email: payload.email || payloadUser?.email || googleEmail || "",
+              user_login: payload.user_login || payload.username || "",
+              display_name: payload.name || payload.display_name || googleName || "",
+              roles: payload.roles,
+            });
+          }
+        }
+
+        if (user) {
+          // Enrich with Google claims if WordPress returned placeholder username/display_name
+          const isPlaceholderUsername =
+            !user.username || /^user_[a-z0-9_]+$/i.test(user.username);
+          const isPlaceholderDisplayName =
+            !user.displayName ||
+            /^user_[a-z0-9_]+$/i.test(user.displayName) ||
+            user.displayName === user.username;
+
+          const finalUsername = isPlaceholderUsername
+            ? (user.email ? user.email.split("@")[0] : (googleEmail ? googleEmail.split("@")[0] : user.username))
+            : user.username;
+
+          const finalDisplayName = isPlaceholderDisplayName
+            ? (googleName ||
+                (googleFirstName ? `${googleFirstName} ${googleLastName}`.trim() : "") ||
+                (user.firstName ? `${user.firstName} ${user.lastName || ""}`.trim() : "") ||
+                finalUsername)
+            : user.displayName;
+
+          user = {
+            ...user,
+            email: user.email || googleEmail,
+            username: finalUsername,
+            displayName: finalDisplayName,
+            firstName: user.firstName || googleFirstName || undefined,
+            lastName: user.lastName || googleLastName || undefined,
+            avatarUrl: googlePicture || user.avatarUrl || undefined,
+          };
+        }
+
+        return {
+          success: true,
+          tokens: { jwt, refreshToken },
+          user,
+        };
+      }
+    }
+
+    const errorMsg = extractErrorMessage(json, res.status);
+    return {
+      success: false,
+      message: errorMsg,
+    };
+  } catch (error: unknown) {
+    console.error("[loginWithGoogleOnServer] Error communicating with OAuth endpoint:", error);
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : "Failed to authenticate with Google",
     };
   }
 }

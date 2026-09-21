@@ -100,8 +100,12 @@ export function UserNav() {
   // Display name formatting
   const displayName =
     user.firstName ||
-    user.displayName ||
-    user.username ||
+    (user.displayName && !/^user_[a-z0-9_]+$/i.test(user.displayName)
+      ? user.displayName
+      : undefined) ||
+    (user.username && !/^user_[a-z0-9_]+$/i.test(user.username)
+      ? user.username
+      : undefined) ||
     user.email.split("@")[0];
 
   const initials = (
@@ -112,7 +116,7 @@ export function UserNav() {
 
   return (
     <div className="relative inline-block text-left" ref={dropdownRef}>
-      {/* Trigger: User icon + User Name */}
+      {/* Trigger: User icon / Picture + User Name */}
       <button
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
@@ -126,10 +130,19 @@ export function UserNav() {
         aria-haspopup="true"
         aria-label="User menu"
       >
-        {/* Avatar badge */}
-        <span className="w-6 h-6 rounded-full bg-primary/10 text-primary text-[11px] font-semibold flex items-center justify-center border border-primary/20 shrink-0">
-          {initials}
-        </span>
+        {/* Avatar badge / Google Profile Picture */}
+        {user.avatarUrl ? (
+          <img
+            src={user.avatarUrl}
+            alt={displayName}
+            className="w-6 h-6 rounded-full object-cover border border-primary/20 shrink-0"
+            referrerPolicy="no-referrer"
+          />
+        ) : (
+          <span className="w-6 h-6 rounded-full bg-primary/10 text-primary text-[11px] font-semibold flex items-center justify-center border border-primary/20 shrink-0">
+            {initials}
+          </span>
+        )}
         <span className="max-w-[110px] truncate font-medium text-xs sm:text-sm text-foreground">
           {displayName}
         </span>
@@ -151,9 +164,18 @@ export function UserNav() {
           {/* Header Info */}
           <div className="px-3 py-2.5 border-b border-border/60">
             <div className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-full bg-primary/15 text-primary text-xs font-bold flex items-center justify-center border border-primary/20">
-                {initials}
-              </div>
+              {user.avatarUrl ? (
+                <img
+                  src={user.avatarUrl}
+                  alt={displayName}
+                  className="w-9 h-9 rounded-full object-cover border border-primary/20 shrink-0"
+                  referrerPolicy="no-referrer"
+                />
+              ) : (
+                <div className="w-9 h-9 rounded-full bg-primary/15 text-primary text-xs font-bold flex items-center justify-center border border-primary/20 shrink-0">
+                  {initials}
+                </div>
+              )}
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-semibold text-foreground truncate">
                   {user.displayName || displayName}
