@@ -127,6 +127,14 @@ export function AuthForm({ initialMode = "login" }: AuthFormProps) {
       confirmPassword: regConfirmPassword,
     });
 
+    if (!res.success) {
+      toast.error(
+        res.error ||
+          "Registration failed. An account with this email address may already exist."
+      );
+      return;
+    }
+
     if (useAuthStore.getState().isAuthenticated) {
       toast.success("Welcome! Your account was created and you are now signed in.");
       router.push(returnUrl);
