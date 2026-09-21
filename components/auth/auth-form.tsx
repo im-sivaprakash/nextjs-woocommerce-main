@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/defaultbutton";
 import { Input } from "@/components/ui/input";
+import { GoogleSignInButton } from "@/components/auth/google-sign-in-button";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -319,15 +320,14 @@ export function AuthForm({ initialMode = "login" }: AuthFormProps) {
             </div>
 
             {/* Google Sign-In Button */}
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleGooglePlaceholder}
-              className="w-full h-10 text-sm font-medium gap-2.5 hover:bg-muted/70 transition-colors border-border/80"
-            >
-              <GoogleIcon />
-              <span>Continue with Google</span>
-            </Button>
+            <GoogleSignInButton
+              mode="login"
+              disabled={isLoading}
+              onSuccess={() => {
+                router.push(returnUrl);
+                router.refresh();
+              }}
+            />
 
             <div className="mt-6 text-center text-xs sm:text-sm text-muted-foreground">
               Don&apos;t have an account?{" "}
@@ -520,15 +520,14 @@ export function AuthForm({ initialMode = "login" }: AuthFormProps) {
             </div>
 
             {/* Google Sign-In Button */}
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleGooglePlaceholder}
-              className="w-full h-10 text-sm font-medium gap-2.5 hover:bg-muted/70 transition-colors border-border/80"
-            >
-              <GoogleIcon />
-              <span>Sign up with Google</span>
-            </Button>
+            <GoogleSignInButton
+              mode="register"
+              disabled={isLoading}
+              onSuccess={() => {
+                router.push(returnUrl);
+                router.refresh();
+              }}
+            />
 
             <div className="mt-6 text-center text-xs sm:text-sm text-muted-foreground">
               Already have an account?{" "}

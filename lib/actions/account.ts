@@ -76,47 +76,70 @@ export async function getCustomerOrdersAction(): Promise<{
     const host = process.env.NEXT_PUBLIC_WOOCOMMERCE_HOST || "trjshop.com";
     const baseUrl = `${protocol}://${host}/wp-json/wc/v3/orders`;
 
-    const url = new URL(baseUrl);
-    url.searchParams.set("consumer_key", ck);
-    url.searchParams.set("consumer_secret", cs);
-    url.searchParams.set("per_page", "20");
+    const orderMap = new Map<number, RawOrder>();
 
-    // Search by customer ID if numeric, and also fallback/support search by email
+    // 1. Fetch orders by customer ID if logged in
     if (user.id && Number(user.id) > 0) {
-      url.searchParams.set("customer", String(user.id));
-    } else if (user.email) {
-      url.searchParams.set("search", user.email);
+      try {
+        const idUrl = new URL(baseUrl);
+        idUrl.searchParams.set("consumer_key", ck);
+        idUrl.searchParams.set("consumer_secret", cs);
+        idUrl.searchParams.set("customer", String(user.id));
+        idUrl.searchParams.set("per_page", "50");
+
+        const idRes = await fetch(idUrl.toString(), { cache: "no-store" });
+        if (idRes.ok) {
+          const idData = (await idRes.json().catch(() => [])) as RawOrder[];
+          if (Array.isArray(idData)) {
+            for (const o of idData) {
+              if (o?.id) orderMap.set(o.id, o);
+            }
+          }
+        }
+      } catch (idErr) {
+        console.warn("[getCustomerOrdersAction] Customer ID search error:", idErr);
+      }
     }
 
-    const res = await fetch(url.toString(), {
-      cache: "no-store",
-    });
-
-    if (!res.ok) {
-      // If customer ID search returned 0 or error, attempt email search
-      if (user.email) {
+    // 2. Fetch orders by user email (finds all guest orders placed with this email)
+    if (user.email) {
+      try {
         const emailUrl = new URL(baseUrl);
         emailUrl.searchParams.set("consumer_key", ck);
         emailUrl.searchParams.set("consumer_secret", cs);
-        emailUrl.searchParams.set("search", user.email);
+        emailUrl.searchParams.set("search", user.email.trim());
+        emailUrl.searchParams.set("per_page", "50");
+
         const emailRes = await fetch(emailUrl.toString(), { cache: "no-store" });
         if (emailRes.ok) {
-          const emailData: unknown = await emailRes.json();
+          const emailData = (await emailRes.json().catch(() => [])) as RawOrder[];
           if (Array.isArray(emailData)) {
-            const orders = formatOrders(emailData as RawOrder[], user.email);
-            return { success: true, orders };
+            for (const o of emailData) {
+              if (o?.id) {
+                const billingEmail = o.billing?.email?.toLowerCase().trim();
+                if (!billingEmail || billingEmail === user.email.toLowerCase().trim()) {
+                  orderMap.set(o.id, o);
+                }
+              }
+            }
           }
         }
+      } catch (emailErr) {
+        console.warn("[getCustomerOrdersAction] Email search error:", emailErr);
       }
-      return { success: true, orders: [] };
     }
 
-    const data: unknown = await res.json();
-    if (!Array.isArray(data)) {
-      return { success: true, orders: [] };
-    }
+    // 3. Sort merged orders newest to oldest
+    const combinedRawOrders = Array.from(orderMap.values()).sort((a, b) => {
+      const dateA = new Date(a.date_created || a.date_created_gmt || 0).getTime();
+      const dateB = new Date(b.date_created || b.date_created_gmt || 0).getTime();
+      if (!isNaN(dateA) && !isNaN(dateB) && dateA !== dateB) {
+        return dateB - dateA;
+      }
+      return b.id - a.id;
+    });
 
-    const orders = formatOrders(data as RawOrder[], user.email);
+    const orders = formatOrders(combinedRawOrders, user.email);
     return {
       success: true,
       orders,
