@@ -152,9 +152,15 @@ export function AddressFields({
               onChange={(e) => update("state", e.target.value)}
               aria-label={t("checkout.fields.state")}
             >
-              <option value="">{t("checkout.fields.selectState")}</option>
+              <option value="" className="bg-background text-foreground dark:bg-zinc-900 dark:text-zinc-100">
+                {t("checkout.fields.selectState")}
+              </option>
               {selectedCountry.states.map((s) => (
-                <option key={s.code} value={s.code}>
+                <option
+                  key={s.code}
+                  value={s.code}
+                  className="bg-background text-foreground dark:bg-zinc-900 dark:text-zinc-100"
+                >
                   {s.name}
                 </option>
               ))}

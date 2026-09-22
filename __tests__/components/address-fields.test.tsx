@@ -319,4 +319,27 @@ describe("AddressFields Component — Searchable Country Combobox", () => {
       expect(shippingResult.data.postcode).toBe("624622");
     }
   });
+
+  it("applies theme-safe and cross-browser attributes to state selector and options", () => {
+    const { container } = render(<AddressFields namePrefix="billing" countries={mockCountries} />);
+    const select = container.querySelector("#billing_state");
+    expect(select).toBeInTheDocument();
+    expect(select).toHaveClass("[color-scheme:light]");
+    expect(select).toHaveClass("dark:[color-scheme:dark]");
+
+    const options = select?.querySelectorAll("option");
+    expect(options && options.length).toBeGreaterThan(1);
+    options?.forEach((opt) => {
+      expect(opt).toHaveClass("dark:bg-zinc-900");
+      expect(opt).toHaveClass("dark:text-zinc-100");
+    });
+  });
+
+  it("applies Twemoji font class to country flag emoji for cross-browser visual rendering", () => {
+    render(<AddressFields namePrefix="billing" countries={mockCountries} />);
+    const countryControl = screen.getByRole("combobox", { name: /country/i });
+    const flagSpan = countryControl.querySelector("span[aria-hidden='true']");
+    expect(flagSpan).toBeInTheDocument();
+    expect(flagSpan?.className).toContain("Twemoji_Country_Flags");
+  });
 });

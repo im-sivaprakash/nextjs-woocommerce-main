@@ -86,7 +86,7 @@ export function CountryCombobox({
           <span className="flex items-center gap-2 truncate">
             {selectedCountry ? (
               <>
-                <span aria-hidden="true" className="text-base leading-none">
+                <span aria-hidden="true" className="font-['Twemoji_Country_Flags',sans-serif] text-base leading-none">
                   {getCountryFlagEmoji(selectedCountry.code)}
                 </span>
                 <span className="truncate">{selectedCountry.name}</span>
@@ -102,10 +102,10 @@ export function CountryCombobox({
           <Combobox.Positioner
             sideOffset={4}
             align="start"
-            className="z-50 min-w-[var(--anchor-width)]"
+            className="z-50 min-w-[var(--anchor-width)] max-w-[calc(100vw-2rem)]"
           >
-            <Combobox.Popup className="w-[var(--anchor-width)] max-w-sm rounded-lg border border-border bg-popover p-1 text-popover-foreground shadow-md outline-none">
-              <div className="flex items-center border-b border-border px-2 pb-1.5 pt-1">
+            <Combobox.Popup className="flex max-h-[min(var(--available-height,20rem),20rem)] w-[var(--anchor-width)] max-w-sm flex-col rounded-lg border border-border bg-popover p-1 text-popover-foreground shadow-md outline-none">
+              <div className="flex shrink-0 items-center border-b border-border px-2 pb-1.5 pt-1">
                 <Search className="mr-2 h-4 w-4 shrink-0 text-muted-foreground" />
                 <Combobox.Input
                   placeholder={resolvedSearchPlaceholder}
@@ -113,7 +113,7 @@ export function CountryCombobox({
                 />
               </div>
 
-              <Combobox.List className="max-h-60 overflow-y-auto overflow-x-hidden p-1">
+              <Combobox.List className="flex-1 overflow-y-auto overflow-x-hidden p-1 overscroll-contain">
                 {(country: WooCountry) => {
                   const flag = getCountryFlagEmoji(country.code);
                   return (
@@ -124,7 +124,7 @@ export function CountryCombobox({
                     >
                       <span className="flex items-center gap-2 truncate">
                         {flag && (
-                          <span aria-hidden="true" className="text-base leading-none">
+                          <span aria-hidden="true" className="font-['Twemoji_Country_Flags',sans-serif] text-base leading-none">
                             {flag}
                           </span>
                         )}
@@ -138,7 +138,7 @@ export function CountryCombobox({
                 }}
               </Combobox.List>
 
-              <Combobox.Empty className="py-6 text-center text-sm text-muted-foreground">
+              <Combobox.Empty className="empty:hidden py-6 text-center text-sm text-muted-foreground">
                 {resolvedNoResults}
               </Combobox.Empty>
             </Combobox.Popup>
