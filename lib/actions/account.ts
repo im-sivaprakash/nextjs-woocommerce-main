@@ -1,6 +1,8 @@
 "use server";
 
 import { getSessionUser } from "@/lib/auth/session";
+import { fetchOrderTracking } from "@/lib/woocommerce/shipping";
+import type { OrderTrackingInfo } from "@/lib/woocommerce/shipping-types";
 
 export interface CustomerOrderSummary {
   id: number;
@@ -149,6 +151,33 @@ export async function getCustomerOrdersAction(): Promise<{
       success: false,
       orders: [],
       error: error instanceof Error ? error.message : "Failed to retrieve orders",
+    };
+  }
+}
+
+/**
+ * Fetch shipment tracking information for a specific order.
+ * Ensures the authenticated user owns the requested order before fetching.
+ */
+export async function getOrderTrackingAction(orderId: number): Promise<{
+  success: boolean;
+  tracking?: OrderTrackingInfo;
+  error?: string;
+}> {
+  try {
+    const user = await getSessionUser();
+    if (!user) {
+      return {
+        success: false,
+        error: "You must be signed in to view tracking details.",
+      };
+    }
+
+    return await fetchOrderTracking(orderId, user.id, user.email);
+  } catch (error: unknown) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to retrieve order tracking.",
     };
   }
 }
