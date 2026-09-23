@@ -241,8 +241,12 @@ export const en: Record<string, string> = {
   "checkout.fields.aptPlaceholder": "Apartment, suite, etc.",
   "checkout.fields.cityPlaceholder": "e.g. Warsaw",
   "checkout.fields.statePlaceholder": "e.g. NY",
-  "checkout.fields.postcodePlaceholder": "e.g. 91-311",
+  "checkout.fields.postcodePlaceholder": "e.g. 600001",
   "checkout.fields.countryPlaceholder": "e.g. PL, US, GB",
+  "checkout.fields.selectState": "Select State / Province",
+  "checkout.fields.searchCountry": "Search country...",
+  "checkout.fields.noCountriesFound": "No countries found",
+  "checkout.fields.fixedCountryHint": "Fixed for this store",
 
   "orderConfirmation.confirmedTitle": "Order Confirmed!",
   "orderConfirmation.pendingTitle": "Payment Pending",
