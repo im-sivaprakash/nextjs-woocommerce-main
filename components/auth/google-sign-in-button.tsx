@@ -77,7 +77,7 @@ export function GoogleSignInButton({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const googleBtnContainerRef = useRef<HTMLDivElement>(null);
 
-  const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
+  const clientId = process.env.PUBLIC_GOOGLE_CLIENT_ID;
 
   // Initialize and render GSI button
   useEffect(() => {
@@ -165,7 +165,7 @@ export function GoogleSignInButton({
   const handleCustomClick = () => {
     if (!clientId) {
       toast.error(
-        "Google Client ID is not configured. Please set NEXT_PUBLIC_GOOGLE_CLIENT_ID."
+        "Google Client ID is not configured. Please set PUBLIC_GOOGLE_CLIENT_ID."
       );
       return;
     }
