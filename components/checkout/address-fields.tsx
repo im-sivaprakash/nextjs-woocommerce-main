@@ -1,12 +1,11 @@
 "use client";
 
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useCheckoutStore } from "@/lib/store/checkout-store";
 import { Input } from "@/components/ui/input";
 import { CountryFlag } from "@/components/ui/country-flag";
 import { getAvailableCountries } from "@/lib/actions/cart";
 import {
-  ALLOWED_COUNTRIES,
   isSingleCountryFixed,
   getDefaultCountry,
 } from "@/lib/config/countries";
@@ -67,12 +66,20 @@ const DEFAULT_INITIAL_COUNTRIES: WooCountry[] = [
 ];
 
 export function AddressFields({ namePrefix, showContactFields = false }: AddressFieldsProps) {
-  const { updateBilling, updateShipping } = useCheckoutStore();
+  const updateBilling = useCheckoutStore((s) => s.updateBilling);
+  const updateShipping = useCheckoutStore((s) => s.updateShipping);
   const address = useCheckoutStore((s) => (namePrefix === "billing" ? s.billing : s.shipping));
-  const update =
-    namePrefix === "billing"
-      ? (f: string, v: string) => updateBilling(f as keyof BillingAddress, v)
-      : (f: string, v: string) => updateShipping(f as keyof ShippingAddress, v);
+
+  const update = useCallback(
+    (f: string, v: string) => {
+      if (namePrefix === "billing") {
+        updateBilling(f as keyof BillingAddress, v);
+      } else {
+        updateShipping(f as keyof ShippingAddress, v);
+      }
+    },
+    [namePrefix, updateBilling, updateShipping]
+  );
 
   const htmlId = (f: string) => `${namePrefix}_${f}`;
 

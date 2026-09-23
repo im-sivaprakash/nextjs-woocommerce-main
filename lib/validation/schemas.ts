@@ -117,7 +117,7 @@ export const CheckoutFormSchema = z.object({
   shipping: ShippingSchema,
 });
 
-type CheckoutFormValues = z.infer<typeof CheckoutFormSchema>;
+export type CheckoutFormValues = z.infer<typeof CheckoutFormSchema>;
 
 // ── Shop page URL params ──────────────────────────────────────────────────────
 
