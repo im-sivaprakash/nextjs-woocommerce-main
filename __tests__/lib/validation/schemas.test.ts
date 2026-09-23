@@ -17,12 +17,12 @@ describe("BillingSchema", () => {
     company: "",
     address_1: "123 Main St",
     address_2: "",
-    city: "New York",
-    state: "NY",
-    postcode: "10001",
-    country: "US",
+    city: "Chennai",
+    state: "TN",
+    postcode: "600001",
+    country: "IN",
     email: "jane@example.com",
-    phone: "+1 555 000 0000",
+    phone: "+91 98765 43210",
   };
 
   it("accepts a valid billing object", () => {
@@ -42,6 +42,31 @@ describe("BillingSchema", () => {
 
   it("rejects missing country", () => {
     const result = BillingSchema.safeParse({ ...validBilling, country: "" });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects unauthorized country", () => {
+    const result = BillingSchema.safeParse({ ...validBilling, country: "US" });
+    expect(result.success).toBe(false);
+  });
+
+  it("accepts exactly 6-digit numeric postcode", () => {
+    const result = BillingSchema.safeParse({ ...validBilling, postcode: "600001" });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects postcode with less than 6 digits", () => {
+    const result = BillingSchema.safeParse({ ...validBilling, postcode: "12345" });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects postcode with more than 6 digits", () => {
+    const result = BillingSchema.safeParse({ ...validBilling, postcode: "1234567" });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects postcode with non-numeric characters", () => {
+    const result = BillingSchema.safeParse({ ...validBilling, postcode: "60000A" });
     expect(result.success).toBe(false);
   });
 
@@ -66,16 +91,28 @@ describe("ShippingSchema", () => {
     }
   });
 
-  it("accepts a fully populated shipping object", () => {
+  it("accepts a fully populated shipping object with valid 6-digit postcode and country", () => {
     const result = ShippingSchema.safeParse({
       first_name: "John",
       last_name: "Smith",
       address_1: "1 Park Ave",
-      city: "Boston",
-      postcode: "02108",
-      country: "US",
+      city: "Chennai",
+      postcode: "600002",
+      country: "IN",
     });
     expect(result.success).toBe(true);
+  });
+
+  it("rejects populated shipping object with invalid postcode", () => {
+    const result = ShippingSchema.safeParse({
+      first_name: "John",
+      last_name: "Smith",
+      address_1: "1 Park Ave",
+      city: "Chennai",
+      postcode: "1234",
+      country: "IN",
+    });
+    expect(result.success).toBe(false);
   });
 });
 
@@ -221,4 +258,36 @@ describe("OrderConfirmationParamsSchema", () => {
       expect(result.data.order_key).toBeUndefined();
     }
   });
+
+  it("accepts valid buy_now flag ('1' or 'true')", () => {
+    const res1 = OrderConfirmationParamsSchema.safeParse({
+      order_id: "42",
+      buy_now: "1",
+    });
+    expect(res1.success).toBe(true);
+    if (res1.success) {
+      expect(res1.data.buy_now).toBe("1");
+    }
+
+    const res2 = OrderConfirmationParamsSchema.safeParse({
+      order_id: "42",
+      buy_now: "true",
+    });
+    expect(res2.success).toBe(true);
+    if (res2.success) {
+      expect(res2.data.buy_now).toBe("true");
+    }
+  });
+
+  it("coerces invalid buy_now values to undefined", () => {
+    const res = OrderConfirmationParamsSchema.safeParse({
+      order_id: "42",
+      buy_now: "invalid",
+    });
+    expect(res.success).toBe(true);
+    if (res.success) {
+      expect(res.data.buy_now).toBeUndefined();
+    }
+  });
 });
+

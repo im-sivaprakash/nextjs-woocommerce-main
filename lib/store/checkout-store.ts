@@ -1,6 +1,11 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { BillingAddress, ShippingAddress } from "@/lib/woocommerce/types";
+import {
+  getDefaultCountry,
+  isCountryAllowed,
+  isSingleCountryFixed,
+} from "@/lib/config/countries";
 
 const emptyBilling: BillingAddress = {
   first_name: "",
@@ -11,7 +16,7 @@ const emptyBilling: BillingAddress = {
   city: "",
   state: "",
   postcode: "",
-  country: "US",
+  country: getDefaultCountry(),
   email: "",
   phone: "",
 };
@@ -25,7 +30,7 @@ const emptyShipping: ShippingAddress = {
   city: "",
   state: "",
   postcode: "",
-  country: "US",
+  country: getDefaultCountry(),
 };
 
 interface CheckoutState {
@@ -75,6 +80,20 @@ export const useCheckoutStore = create<CheckoutState>()(
         sameAsShipping: state.sameAsShipping,
         selectedPaymentMethod: state.selectedPaymentMethod,
       }),
+      onRehydrateStorage: () => (state) => {
+        if (!state) return;
+        if (isSingleCountryFixed()) {
+          state.billing.country = "IN";
+          state.shipping.country = "IN";
+        } else {
+          if (!isCountryAllowed(state.billing.country)) {
+            state.billing.country = getDefaultCountry();
+          }
+          if (!isCountryAllowed(state.shipping.country)) {
+            state.shipping.country = getDefaultCountry();
+          }
+        }
+      },
     }
   )
 );

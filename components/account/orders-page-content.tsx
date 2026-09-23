@@ -8,6 +8,7 @@ import {
   getCustomerOrdersAction,
   type CustomerOrderSummary,
 } from "@/lib/actions/account";
+import { OrderTrackingView } from "@/components/account/order-tracking-view";
 import {
   Package,
   ShoppingBag,
@@ -19,6 +20,9 @@ import {
   AlertTriangle,
   XCircle,
   Loader2,
+  Truck,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/defaultbutton";
 import { Badge } from "@/components/ui/badge";
@@ -73,6 +77,14 @@ export function OrdersPageContent() {
   const [orders, setOrders] = useState<CustomerOrderSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [expandedTracking, setExpandedTracking] = useState<Record<number, boolean>>({});
+
+  const toggleTracking = (orderId: number) => {
+    setExpandedTracking((prev) => ({
+      ...prev,
+      [orderId]: !prev[orderId],
+    }));
+  };
 
   useEffect(() => {
     let isMounted = true;
@@ -200,79 +212,118 @@ export function OrdersPageContent() {
         </div>
       ) : (
         <div className="space-y-5">
-          {orders.map((order) => (
-            <div
-              key={order.id}
-              className="rounded-2xl border border-border/80 bg-card p-5 sm:p-6 shadow-sm hover:border-primary/40 transition-all duration-200 space-y-4"
-            >
-              {/* Order Header */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-border/60">
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-bold text-xs">
-                    #{order.number}
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-sm sm:text-base text-foreground">
-                      Order #{order.number}
-                    </h3>
-                    <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5">
-                      <span className="flex items-center gap-1">
-                        <Calendar className="w-3 h-3" />
-                        {order.dateCreated
-                          ? new Date(order.dateCreated).toLocaleDateString(undefined, {
-                              year: "numeric",
-                              month: "short",
-                              day: "numeric",
-                            })
-                          : "—"}
-                      </span>
-                      <span>•</span>
-                      <span className="flex items-center gap-1">
-                        <CreditCard className="w-3 h-3" />
-                        {order.paymentMethodTitle}
-                      </span>
+          {orders.map((order) => {
+            const isTrackingOpen = Boolean(expandedTracking[order.id]);
+
+            return (
+              <div
+                key={order.id}
+                className="rounded-2xl border border-border/80 bg-card p-5 sm:p-6 shadow-sm hover:border-primary/40 transition-all duration-200 space-y-4"
+              >
+                {/* Order Header */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-border/60">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-bold text-xs">
+                      #{order.number}
                     </div>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-3 self-end sm:self-auto">
-                  <StatusBadge status={order.status} />
-                  <span className="font-heading font-bold text-base text-foreground">
-                    ${parseFloat(order.total || "0").toFixed(2)}
-                  </span>
-                </div>
-              </div>
-
-              {/* Items Summary */}
-              {order.lineItems.length > 0 && (
-                <div className="space-y-2 pt-1">
-                  <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider block">
-                    Purchased Items ({order.itemCount})
-                  </span>
-                  <div className="divide-y divide-border/40 rounded-xl bg-muted/30 border border-border/40 px-3 py-1">
-                    {order.lineItems.map((item) => (
-                      <div
-                        key={item.id}
-                        className="py-2 flex items-center justify-between text-xs sm:text-sm"
-                      >
-                        <div className="flex items-center gap-2 max-w-[70%]">
-                          <span className="font-medium text-foreground truncate">
-                            {item.name}
-                          </span>
-                          <span className="text-xs text-muted-foreground shrink-0">
-                            × {item.quantity}
-                          </span>
-                        </div>
-                        <span className="font-medium text-foreground">
-                          ${parseFloat(item.total || "0").toFixed(2)}
+                    <div>
+                      <h3 className="font-semibold text-sm sm:text-base text-foreground">
+                        Order #{order.number}
+                      </h3>
+                      <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5">
+                        <span className="flex items-center gap-1">
+                          <Calendar className="w-3 h-3" />
+                          {order.dateCreated
+                            ? new Date(order.dateCreated).toLocaleDateString(undefined, {
+                                year: "numeric",
+                                month: "short",
+                                day: "numeric",
+                              })
+                            : "—"}
+                        </span>
+                        <span>•</span>
+                        <span className="flex items-center gap-1">
+                          <CreditCard className="w-3 h-3" />
+                          {order.paymentMethodTitle}
                         </span>
                       </div>
-                    ))}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3 self-end sm:self-auto">
+                    <StatusBadge status={order.status} />
+                    <span className="font-heading font-bold text-base text-foreground">
+                      ${parseFloat(order.total || "0").toFixed(2)}
+                    </span>
                   </div>
                 </div>
-              )}
-            </div>
-          ))}
+
+                {/* Items Summary */}
+                {order.lineItems.length > 0 && (
+                  <div className="space-y-2 pt-1">
+                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider block">
+                      Purchased Items ({order.itemCount})
+                    </span>
+                    <div className="divide-y divide-border/40 rounded-xl bg-muted/30 border border-border/40 px-3 py-1">
+                      {order.lineItems.map((item) => (
+                        <div
+                          key={item.id}
+                          className="py-2 flex items-center justify-between text-xs sm:text-sm"
+                        >
+                          <div className="flex items-center gap-2 max-w-[70%]">
+                            <span className="font-medium text-foreground truncate">
+                              {item.name}
+                            </span>
+                            <span className="text-xs text-muted-foreground shrink-0">
+                              × {item.quantity}
+                            </span>
+                          </div>
+                          <span className="font-medium text-foreground">
+                            ${parseFloat(item.total || "0").toFixed(2)}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Tracking Action Bar */}
+                <div className="pt-2 flex items-center justify-between">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => toggleTracking(order.id)}
+                    className={cn(
+                      "text-xs gap-2 rounded-xl transition-all",
+                      isTrackingOpen
+                        ? "bg-primary/10 border-primary/40 text-primary hover:bg-primary/15"
+                        : "hover:border-primary/40"
+                    )}
+                  >
+                    <Truck className="w-3.5 h-3.5" />
+                    <span>{isTrackingOpen ? "Hide Tracking" : "Track Shipment"}</span>
+                    {isTrackingOpen ? (
+                      <ChevronUp className="w-3 h-3 ml-0.5" />
+                    ) : (
+                      <ChevronDown className="w-3 h-3 ml-0.5" />
+                    )}
+                  </Button>
+                </div>
+
+                {/* Collapsible Tracking Detail Section */}
+                {isTrackingOpen && (
+                  <div className="pt-2 animate-in fade-in slide-in-from-top-2 duration-200">
+                    <OrderTrackingView
+                      orderId={order.id}
+                      orderNumber={order.number}
+                      orderStatus={order.status}
+                    />
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
     </main>

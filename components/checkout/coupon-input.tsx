@@ -10,13 +10,31 @@ import { Tag, X, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { t } from "@/lib/i18n";
 
+import type { WooCart } from "@/lib/woocommerce/types";
+
+interface CouponInputProps {
+  cart?: WooCart | null;
+  isPending?: boolean;
+  applyCoupon?: (code: string) => Promise<{ error?: string }>;
+  removeCoupon?: (code: string) => Promise<{ error?: string }>;
+}
+
 /**
  * Coupon input component for the checkout page.
  * Allows users to apply and remove coupon codes. Reads applied coupons from the
  * cart store so they are automatically restored on page refresh.
  */
-export function CouponInput() {
-  const { cart, isPending, applyCoupon, removeCoupon } = useCartStore();
+export function CouponInput({
+  cart: propCart,
+  isPending: propIsPending,
+  applyCoupon: propApplyCoupon,
+  removeCoupon: propRemoveCoupon,
+}: CouponInputProps = {}) {
+  const store = useCartStore();
+  const cart = propCart !== undefined ? propCart : store.cart;
+  const isPending = propIsPending !== undefined ? propIsPending : store.isPending;
+  const applyCoupon = propApplyCoupon ?? store.applyCoupon;
+  const removeCoupon = propRemoveCoupon ?? store.removeCoupon;
   const [code, setCode] = useState("");
   const [isApplying, setIsApplying] = useState(false);
   const [isRemoving, setIsRemoving] = useState<string | null>(null);

@@ -7,8 +7,22 @@ import { makeProduct } from "../fixtures";
 
 // ── Mocks ─────────────────────────────────────────────────────────────────────
 
+const mockPush = jest.fn();
+jest.mock("next/navigation", () => ({
+  useRouter: () => ({ push: mockPush }),
+}));
+
 jest.mock("@/lib/store/cart-store", () => ({
   useCartStore: jest.fn(),
+}));
+
+const mockStartBuyNow = jest.fn();
+jest.mock("@/lib/store/buy-now-store", () => ({
+  useBuyNowStore: {
+    getState: () => ({
+      startBuyNow: mockStartBuyNow,
+    }),
+  },
 }));
 
 jest.mock("@/lib/utils/gtm-events", () => ({
@@ -34,6 +48,7 @@ const mockToastError = jest.mocked(toast.error);
 
 function setupStore({ addResult = { error: undefined } }: { addResult?: { error?: string } } = {}) {
   mockAddItem.mockResolvedValue(addResult);
+  mockStartBuyNow.mockResolvedValue({ cart: {} });
   (useCartStore as unknown as jest.Mock).mockReturnValue({
     addItem: mockAddItem,
     openCart: mockOpenCart,
@@ -70,11 +85,27 @@ describe("simple product (in stock)", () => {
     expect(screen.getByRole("button", { name: /decrease quantity/i })).toBeInTheDocument();
   });
 
-  it("calls addItem and openCart on submit", async () => {
-    render(<AddToCartForm product={makeProduct({ id: 7 })} {...defaultProps} />);
+  it("calls addItem and openCart on submit and resets quantity to 1", async () => {
+    const { container } = render(<AddToCartForm product={makeProduct({ id: 7 })} {...defaultProps} />);
+    // Increment quantity to 2
+    fireEvent.click(screen.getByRole("button", { name: /increase quantity/i }));
+    const quantitySpan = container.querySelector('[aria-live="polite"]')!;
+    expect(quantitySpan).toHaveTextContent("2");
+
     fireEvent.click(screen.getByRole("button", { name: new RegExp(t('product.addToCart'), "i") }));
-    await waitFor(() => expect(mockAddItem).toHaveBeenCalledWith(7, 1));
+    await waitFor(() => expect(mockAddItem).toHaveBeenCalledWith(7, 2));
     expect(mockOpenCart).toHaveBeenCalled();
+    // Verify quantity reset back to 1
+    expect(quantitySpan).toHaveTextContent("1");
+  });
+
+  it("renders Buy Now button and navigates to /checkout?buy_now=1 on click", async () => {
+    render(<AddToCartForm product={makeProduct({ id: 7 })} {...defaultProps} />);
+    const buyNowBtn = screen.getByRole("button", { name: new RegExp(t('product.buyNow'), "i") });
+    expect(buyNowBtn).toBeInTheDocument();
+    fireEvent.click(buyNowBtn);
+    await waitFor(() => expect(mockStartBuyNow).toHaveBeenCalledWith(7, 1, undefined));
+    expect(mockPush).toHaveBeenCalledWith("/checkout?buy_now=1");
   });
 });
 

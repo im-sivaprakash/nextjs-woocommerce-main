@@ -134,13 +134,13 @@ export const useCartStore = create<CartState>((set, get) => {
           const storedToken = getStoredToken();
           const storedNonce = getStoredNonce();
           const result = await getCartAction(storedToken);
-          if (result.cartToken) saveToken(result.cartToken);
-          if (result.nonce) saveNonce(result.nonce);
+          if (result?.cartToken) saveToken(result.cartToken);
+          if (result?.nonce) saveNonce(result.nonce);
           set({
-            cart: result.cart ?? null,
-            cartToken: result.cartToken ?? storedToken,
-            nonce: result.nonce ?? storedNonce,
-            itemCount: result.cart?.items_count ?? 0,
+            cart: result?.cart ?? null,
+            cartToken: result?.cartToken ?? storedToken,
+            nonce: result?.nonce ?? storedNonce,
+            itemCount: result?.cart?.items_count ?? 0,
             _initialized: true,
           });
         } catch (err) {
@@ -160,13 +160,13 @@ export const useCartStore = create<CartState>((set, get) => {
       const token = get().cartToken ?? getStoredToken();
       const storedNonce = get().nonce ?? getStoredNonce();
       const result = await getCartAction(token);
-      if (result.cartToken) saveToken(result.cartToken);
-      if (result.nonce) saveNonce(result.nonce);
+      if (result?.cartToken) saveToken(result.cartToken);
+      if (result?.nonce) saveNonce(result.nonce);
       set({
-        cart: result.cart ?? null,
-        cartToken: result.cartToken ?? token,
-        nonce: result.nonce ?? storedNonce,
-        itemCount: result.cart?.items_count ?? 0,
+        cart: result?.cart ?? null,
+        cartToken: result?.cartToken ?? token,
+        nonce: result?.nonce ?? storedNonce,
+        itemCount: result?.cart?.items_count ?? 0,
       });
     },
 

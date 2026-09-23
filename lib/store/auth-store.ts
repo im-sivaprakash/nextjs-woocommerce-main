@@ -3,6 +3,7 @@ import type { AuthUser, AuthActionResult } from "@/lib/auth/types";
 import type { LoginInput, RegisterInput } from "@/lib/validation/auth-schemas";
 import {
   loginAction,
+  googleLoginAction,
   registerAction,
   logoutAction,
   getAuthSessionAction,
@@ -19,6 +20,8 @@ export interface AuthState {
   initAuth: () => Promise<void>;
   /** Login with email/username and password */
   login: (input: LoginInput) => Promise<AuthActionResult<AuthUser>>;
+  /** Login with Google ID token */
+  googleLogin: (idToken: string) => Promise<AuthActionResult<AuthUser>>;
   /** Register a new customer account */
   register: (input: RegisterInput) => Promise<AuthActionResult<AuthUser>>;
   /** Logout and clear session */
@@ -91,6 +94,48 @@ export const useAuthStore = create<AuthState>((set) => ({
       return {
         success: false,
         error: err instanceof Error ? err.message : "Login failed",
+      };
+    }
+  },
+
+  googleLogin: async (idToken: string) => {
+    set({ isLoading: true });
+    try {
+      const currentCartToken =
+        useCartStore.getState().cartToken ||
+        (typeof window !== "undefined"
+          ? localStorage.getItem("cart-store") || undefined
+          : undefined);
+      const result = await googleLoginAction(idToken, currentCartToken);
+      if (result.success && result.user) {
+        set({
+          user: result.user,
+          isAuthenticated: true,
+          isLoading: false,
+        });
+        const tokenToUse = result.cartToken || currentCartToken;
+        if (tokenToUse) {
+          if (typeof window !== "undefined") {
+            localStorage.setItem("cart-store", tokenToUse);
+          }
+          useCartStore.setState({ cartToken: tokenToUse });
+        }
+        if (result.nonce) {
+          if (typeof window !== "undefined") {
+            localStorage.setItem("cart-nonce-store", result.nonce);
+          }
+          useCartStore.setState({ nonce: result.nonce });
+        }
+        await useCartStore.getState().refreshCart();
+      } else {
+        set({ isLoading: false });
+      }
+      return result;
+    } catch (err: unknown) {
+      set({ isLoading: false });
+      return {
+        success: false,
+        error: err instanceof Error ? err.message : "Google login failed",
       };
     }
   },

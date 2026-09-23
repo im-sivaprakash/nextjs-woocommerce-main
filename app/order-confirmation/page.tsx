@@ -18,10 +18,11 @@ export default async function OrderConfirmationPage({
 }) {
   // Validate URL params — guard against forged/malicious query strings
   const params = OrderConfirmationParamsSchema.parse(await searchParams);
+  const isBuyNow = Boolean(params.buy_now && (params.buy_now === "1" || params.buy_now === "true"));
 
   return (
     <>
-      <CartClearer />
+      <CartClearer isBuyNow={isBuyNow} />
       <div className="container mx-auto px-4 py-16 max-w-2xl">
         <Suspense fallback={<OrderDetailsSkeleton />}>
           <OrderDetails
