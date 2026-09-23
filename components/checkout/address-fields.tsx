@@ -373,11 +373,17 @@ export function AddressFields({ namePrefix, showContactFields = false }: Address
               name={htmlId("state")}
               value={address.state ?? ""}
               onChange={(e) => update("state", e.target.value)}
-              className="flex h-9 w-full min-w-0 rounded-lg border border-input bg-background px-2.5 py-1 text-sm text-foreground transition-colors outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-input/30"
+              className="flex h-9 w-full min-w-0 rounded-lg border border-input bg-background px-2.5 py-1 text-sm text-foreground transition-colors outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 [color-scheme:light] dark:[color-scheme:dark] dark:bg-input/30"
             >
-              <option value="">{t("checkout.fields.selectState")}</option>
+              <option value="" className="bg-background text-foreground dark:bg-popover dark:text-popover-foreground">
+                {t("checkout.fields.selectState")}
+              </option>
               {currentCountryObj.states.map((s) => (
-                <option key={s.code} value={s.code}>
+                <option
+                  key={s.code}
+                  value={s.code}
+                  className="bg-background text-foreground dark:bg-popover dark:text-popover-foreground"
+                >
                   {s.name}
                 </option>
               ))}
