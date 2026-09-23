@@ -4,6 +4,7 @@ import type {
   WooV3Product,
   WooV3Variation,
   CurrencySettings,
+  WooCountry,
 } from "./types";
 
 const WP_URL = `${process.env.NEXT_PUBLIC_WOOCOMMERCE_PROTCOL}://${process.env.NEXT_PUBLIC_WOOCOMMERCE_HOST}`;
@@ -244,6 +245,108 @@ function getCurrencySymbol(code: string): string {
     LKR: "Rs", MMK: "K",
   };
   return symbols[code] || code;
+}
+
+// ─── Country & State data (fetched from WC REST API /data/countries and cached) ──
+
+let countriesCache: WooCountry[] | null = null;
+
+const FALLBACK_COUNTRIES: WooCountry[] = [
+  {
+    code: "IN",
+    name: "India",
+    states: [
+      { code: "AP", name: "Andhra Pradesh" },
+      { code: "AR", name: "Arunachal Pradesh" },
+      { code: "AS", name: "Assam" },
+      { code: "BR", name: "Bihar" },
+      { code: "CT", name: "Chhattisgarh" },
+      { code: "GA", name: "Goa" },
+      { code: "GJ", name: "Gujarat" },
+      { code: "HR", name: "Haryana" },
+      { code: "HP", name: "Himachal Pradesh" },
+      { code: "JH", name: "Jharkhand" },
+      { code: "KA", name: "Karnataka" },
+      { code: "KL", name: "Kerala" },
+      { code: "MP", name: "Madhya Pradesh" },
+      { code: "MH", name: "Maharashtra" },
+      { code: "MN", name: "Manipur" },
+      { code: "ML", name: "Meghalaya" },
+      { code: "MZ", name: "Mizoram" },
+      { code: "NL", name: "Nagaland" },
+      { code: "OR", name: "Odisha" },
+      { code: "PB", name: "Punjab" },
+      { code: "RJ", name: "Rajasthan" },
+      { code: "SK", name: "Sikkim" },
+      { code: "TN", name: "Tamil Nadu" },
+      { code: "TG", name: "Telangana" },
+      { code: "TR", name: "Tripura" },
+      { code: "UP", name: "Uttar Pradesh" },
+      { code: "UT", name: "Uttarakhand" },
+      { code: "WB", name: "West Bengal" },
+      { code: "AN", name: "Andaman and Nicobar Islands" },
+      { code: "CH", name: "Chandigarh" },
+      { code: "DN", name: "Dadra and Nagar Haveli and Daman and Diu" },
+      { code: "DL", name: "Delhi" },
+      { code: "JK", name: "Jammu and Kashmir" },
+      { code: "LA", name: "Ladakh" },
+      { code: "LD", name: "Lakshadweep" },
+      { code: "PY", name: "Puducherry" },
+    ],
+  },
+  {
+    code: "GB",
+    name: "United Kingdom (UK)",
+    states: [],
+  },
+  {
+    code: "AE",
+    name: "United Arab Emirates",
+    states: [
+      { code: "AZ", name: "Abu Dhabi" },
+      { code: "AJ", name: "Ajman" },
+      { code: "DU", name: "Dubai" },
+      { code: "FU", name: "Fujairah" },
+      { code: "RK", name: "Ras Al Khaimah" },
+      { code: "SH", name: "Sharjah" },
+      { code: "UQ", name: "Umm Al Quwain" },
+    ],
+  },
+  {
+    code: "US",
+    name: "United States (US)",
+    states: [
+      { code: "CA", name: "California" },
+      { code: "NY", name: "New York" },
+      { code: "TX", name: "Texas" },
+      { code: "FL", name: "Florida" },
+      { code: "WA", name: "Washington" },
+    ],
+  },
+];
+
+/**
+ * Fetch country and state data from WooCommerce REST API v3 `/wc/v3/data/countries`.
+ * Cached in-memory per server process to avoid repeated remote network calls.
+ * Gracefully falls back to fallback dataset if WooCommerce is unreachable.
+ */
+export async function getCountriesFromServer(): Promise<WooCountry[]> {
+  if (countriesCache) return countriesCache;
+
+  try {
+    const countries = await restApiFetchJson<WooCountry[]>("/data/countries");
+    if (Array.isArray(countries) && countries.length > 0) {
+      countriesCache = countries;
+      return countriesCache;
+    }
+  } catch (err) {
+    console.warn(
+      "[getCountriesFromServer] WooCommerce REST API unreachable, using resilient fallback:",
+      err instanceof Error ? err.message : String(err)
+    );
+  }
+
+  return FALLBACK_COUNTRIES;
 }
 
 // ─── v3 → Store API normalizer ──────────────────────────────────────────────

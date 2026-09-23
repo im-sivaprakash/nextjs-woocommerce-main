@@ -1,6 +1,9 @@
 import { z } from "zod";
+import { isCountryAllowed } from "@/lib/config/countries";
 
 // ── Address schemas (shared by checkout form and cart actions) ────────────────
+
+export const PostcodeRegex = /^\d{6}$/;
 
 export const BillingSchema = z.object({
   first_name: z.string().min(1, "First name is required"),
@@ -10,8 +13,16 @@ export const BillingSchema = z.object({
   address_2: z.string().default(""),
   city: z.string().min(1, "City is required"),
   state: z.string().default(""),
-  postcode: z.string().min(1, "Postcode is required"),
-  country: z.string().min(2, "Country is required"),
+  postcode: z
+    .string()
+    .min(1, "Postcode is required")
+    .regex(PostcodeRegex, "Postcode must be exactly 6 digits"),
+  country: z
+    .string()
+    .min(2, "Country is required")
+    .refine((val) => isCountryAllowed(val), {
+      message: "Selected country is not allowed for checkout",
+    }),
   email: z.email("Please enter a valid email address"),
   phone: z.string().default(""),
 });
@@ -24,8 +35,18 @@ export const ShippingSchema = z.object({
   address_2: z.string().default(""),
   city: z.string().default(""),
   state: z.string().default(""),
-  postcode: z.string().default(""),
-  country: z.string().default(""),
+  postcode: z
+    .string()
+    .refine((val) => !val || PostcodeRegex.test(val), {
+      message: "Postcode must be exactly 6 digits",
+    })
+    .default(""),
+  country: z
+    .string()
+    .refine((val) => !val || isCountryAllowed(val), {
+      message: "Selected country is not allowed for checkout",
+    })
+    .default(""),
 });
 
 /**
@@ -96,7 +117,7 @@ export const CheckoutFormSchema = z.object({
   shipping: ShippingSchema,
 });
 
-type CheckoutFormValues = z.infer<typeof CheckoutFormSchema>;
+export type CheckoutFormValues = z.infer<typeof CheckoutFormSchema>;
 
 // ── Shop page URL params ──────────────────────────────────────────────────────
 

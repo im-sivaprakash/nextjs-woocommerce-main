@@ -430,3 +430,14 @@ export interface ShippingAddress {
   postcode: string;
   country: string;
 }
+
+export interface WooState {
+  code: string;
+  name: string;
+}
+
+export interface WooCountry {
+  code: string;
+  name: string;
+  states: WooState[];
+}

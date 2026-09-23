@@ -12,6 +12,7 @@ import {
   removeCouponOnServer,
   extractCartToken,
   extractNonce,
+  getCountriesFromServer,
 } from "@/lib/woocommerce/api";
 import {
   AddToCartSchema,
@@ -22,7 +23,8 @@ import {
   ApplyCouponSchema,
   RemoveCouponSchema,
 } from "@/lib/validation/schemas";
-import type { WooCart, WooCheckoutOrder, BillingAddress, ShippingAddress } from "@/lib/woocommerce/types";
+import { getAllowedCountries } from "@/lib/config/countries";
+import type { WooCart, WooCheckoutOrder, BillingAddress, ShippingAddress, WooCountry } from "@/lib/woocommerce/types";
 import { decodeHtml } from "@/lib/utils/format";
 
 export async function getCart(cartToken?: string): Promise<{
@@ -263,4 +265,13 @@ export async function removeCoupon(
   } catch (e) {
     return { cart: null, cartToken: null, nonce: null, error: (e as Error).message };
   }
+}
+
+/**
+ * Server action to retrieve countries allowed for checkout, populated with their state data.
+ * Authoritative: runs on the server and applies the configured country filter.
+ */
+export async function getAvailableCountries(): Promise<WooCountry[]> {
+  const allCountries = await getCountriesFromServer();
+  return getAllowedCountries(allCountries);
 }
