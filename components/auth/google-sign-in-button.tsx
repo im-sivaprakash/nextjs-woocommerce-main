@@ -77,7 +77,9 @@ export function GoogleSignInButton({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const googleBtnContainerRef = useRef<HTMLDivElement>(null);
 
-  const clientId = process.env.PUBLIC_GOOGLE_CLIENT_ID;
+  const clientId =
+    process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ||
+    process.env.PUBLIC_GOOGLE_CLIENT_ID;
 
   // Initialize and render GSI button
   useEffect(() => {

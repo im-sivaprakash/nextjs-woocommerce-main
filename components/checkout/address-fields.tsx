@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { useCheckoutStore } from "@/lib/store/checkout-store";
 import { Input } from "@/components/ui/input";
 import { CountryFlag } from "@/components/ui/country-flag";
@@ -17,6 +18,15 @@ interface AddressFieldsProps {
   namePrefix: "billing" | "shipping";
   /** When true, also renders company, email, and phone fields (billing only). */
   showContactFields?: boolean;
+}
+
+interface CountryDropdownPosition {
+  left: number;
+  width: number;
+  top?: number;
+  bottom?: number;
+  maxHeight: number;
+  placement: "down" | "up";
 }
 
 // Resilient initial country state before server action completes
@@ -90,7 +100,10 @@ export function AddressFields({ namePrefix, showContactFields = false }: Address
   const [countries, setCountries] = useState<WooCountry[]>(DEFAULT_INITIAL_COUNTRIES);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [dropdownPosition, setDropdownPosition] = useState<CountryDropdownPosition | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const dropdownTriggerRef = useRef<HTMLButtonElement>(null);
+  const dropdownPanelRef = useRef<HTMLDivElement>(null);
 
   // Fetch available countries from server action
   useEffect(() => {
@@ -109,6 +122,46 @@ export function AddressFields({ namePrefix, showContactFields = false }: Address
     };
   }, []);
 
+  const updateDropdownPosition = useCallback(() => {
+    const trigger = dropdownTriggerRef.current;
+    if (!trigger) return;
+
+    const rect = trigger.getBoundingClientRect();
+    const viewportPadding = 8;
+    const maxPanelHeight = Math.min(window.innerHeight * 0.7, 448);
+    const availableWidth = Math.max(0, window.innerWidth - viewportPadding * 2);
+    const width = Math.min(rect.width, availableWidth);
+    const left = Math.min(
+      Math.max(viewportPadding, rect.left),
+      Math.max(viewportPadding, window.innerWidth - width - viewportPadding)
+    );
+    const spaceBelow = window.innerHeight - rect.bottom - viewportPadding;
+    const spaceAbove = rect.top - viewportPadding;
+
+    // Keep compact lists below when they fit; otherwise use the side with
+    // more room and let the options area scroll within the viewport.
+    const placement =
+      spaceBelow < Math.min(maxPanelHeight, 180) && spaceAbove > spaceBelow ? "up" : "down";
+    const availableSpace = placement === "up" ? spaceAbove : spaceBelow;
+    const maxHeight = Math.max(120, Math.min(maxPanelHeight, availableSpace));
+
+    setDropdownPosition({
+      left,
+      width,
+      ...(placement === "up"
+        ? { bottom: Math.max(viewportPadding, window.innerHeight - rect.top + viewportPadding) }
+        : { top: Math.max(viewportPadding, rect.bottom + viewportPadding) }),
+      maxHeight,
+      placement,
+    });
+  }, []);
+
+  const closeCountryDropdown = useCallback(() => {
+    setIsDropdownOpen(false);
+    setSearchQuery("");
+    setDropdownPosition(null);
+  }, []);
+
   // Ensure current country is set to a valid allowed default
   const selectedCountryCode = address.country || defaultCountry;
   useEffect(() => {
@@ -123,14 +176,39 @@ export function AddressFields({ namePrefix, showContactFields = false }: Address
   useEffect(() => {
     if (!isDropdownOpen) return;
     function handleClickOutside(event: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsDropdownOpen(false);
-        setSearchQuery("");
+      const target = event.target as Node;
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(target) &&
+        !dropdownPanelRef.current?.contains(target)
+      ) {
+        closeCountryDropdown();
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [isDropdownOpen]);
+  }, [isDropdownOpen, closeCountryDropdown]);
+
+  // Dismiss on page or checkout-container scroll, but retain internal option-list scrolling.
+  useEffect(() => {
+    if (!isDropdownOpen) return;
+
+    const handleScroll = (event: Event) => {
+      const target = event.target;
+      if (target instanceof Node && dropdownPanelRef.current?.contains(target)) {
+        return;
+      }
+
+      closeCountryDropdown();
+    };
+
+    window.addEventListener("scroll", handleScroll, true);
+    window.addEventListener("resize", closeCountryDropdown);
+    return () => {
+      window.removeEventListener("scroll", handleScroll, true);
+      window.removeEventListener("resize", closeCountryDropdown);
+    };
+  }, [isDropdownOpen, closeCountryDropdown]);
 
   // Find currently selected country metadata
   const currentCountryObj = useMemo(() => {
@@ -163,8 +241,7 @@ export function AddressFields({ namePrefix, showContactFields = false }: Address
         update("state", "");
       }
     }
-    setIsDropdownOpen(false);
-    setSearchQuery("");
+    closeCountryDropdown();
   }
 
   function handlePostcodeChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -269,7 +346,15 @@ export function AddressFields({ namePrefix, showContactFields = false }: Address
           <div className="relative" ref={dropdownRef}>
             <button
               type="button"
-              onClick={() => setIsDropdownOpen((prev) => !prev)}
+              ref={dropdownTriggerRef}
+              onClick={() => {
+                if (isDropdownOpen) {
+                  closeCountryDropdown();
+                } else {
+                  updateDropdownPosition();
+                  setIsDropdownOpen(true);
+                }
+              }}
               aria-haspopup="listbox"
               aria-expanded={isDropdownOpen}
               className="flex h-9 w-full items-center justify-between rounded-lg border border-input bg-background px-3 py-1 text-sm text-foreground transition-colors outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
@@ -286,13 +371,23 @@ export function AddressFields({ namePrefix, showContactFields = false }: Address
               />
             </button>
 
-            {isDropdownOpen && (
-              <div
-                className="absolute z-50 mt-1 max-h-60 w-full overflow-hidden rounded-lg border border-border bg-popover text-popover-foreground shadow-md transition-all animate-in fade-in-0 zoom-in-95"
-                role="listbox"
-              >
+            {isDropdownOpen && dropdownPosition &&
+              createPortal(
+                <div
+                  ref={dropdownPanelRef}
+                  className="fixed z-[100] flex min-w-0 max-w-[calc(100vw-1rem)] flex-col overflow-hidden rounded-lg border border-border bg-popover text-popover-foreground shadow-md transition-all animate-in fade-in-0 zoom-in-95"
+                  style={{
+                    left: `${dropdownPosition.left}px`,
+                    width: `${dropdownPosition.width}px`,
+                    ...(dropdownPosition.placement === "up"
+                      ? { bottom: `${dropdownPosition.bottom}px` }
+                      : { top: `${dropdownPosition.top}px` }),
+                    maxHeight: `${dropdownPosition.maxHeight}px`,
+                  }}
+                  role="listbox"
+                >
                 {/* Search input for filtering */}
-                <div className="flex items-center border-b border-border px-2.5 py-1.5 bg-muted/20">
+                <div className="flex shrink-0 items-center border-b border-border bg-muted/20 px-2.5 py-1.5">
                   <Search className="h-4 w-4 shrink-0 text-muted-foreground mr-2" aria-hidden="true" />
                   <input
                     type="text"
@@ -303,14 +398,14 @@ export function AddressFields({ namePrefix, showContactFields = false }: Address
                     autoFocus
                     onKeyDown={(e) => {
                       if (e.key === "Escape") {
-                        setIsDropdownOpen(false);
+                        closeCountryDropdown();
                       }
                     }}
                   />
                 </div>
 
                 {/* Country Options list */}
-                <div className="max-h-48 overflow-y-auto p-1">
+                <div className="min-h-0 flex-1 overflow-y-auto p-1">
                   {filteredCountries.length === 0 ? (
                     <div className="px-3 py-2 text-sm text-muted-foreground text-center">
                       {t("checkout.fields.noCountriesFound")}
@@ -345,8 +440,9 @@ export function AddressFields({ namePrefix, showContactFields = false }: Address
                     })
                   )}
                 </div>
-              </div>
-            )}
+                </div>,
+                document.body
+              )}
           </div>
         )}
       </div>

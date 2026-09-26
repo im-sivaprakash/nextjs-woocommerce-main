@@ -5,6 +5,7 @@ import type {
   WooV3Variation,
   CurrencySettings,
   WooCountry,
+  WooState,
 } from "./types";
 
 const WP_URL = `${process.env.NEXT_PUBLIC_WOOCOMMERCE_PROTCOL}://${process.env.NEXT_PUBLIC_WOOCOMMERCE_HOST}`;
@@ -251,6 +252,28 @@ function getCurrencySymbol(code: string): string {
 
 let countriesCache: WooCountry[] | null = null;
 
+// WooCommerce is authoritative. This small supplement only fills the known
+// UAE gap when the API returns the country without any state records.
+const SUPPLEMENTAL_COUNTRY_STATES: Record<string, WooState[]> = {
+  AE: [
+    { code: "AZ", name: "Abu Dhabi" },
+    { code: "AJ", name: "Ajman" },
+    { code: "DU", name: "Dubai" },
+    { code: "FU", name: "Fujairah" },
+    { code: "RK", name: "Ras Al Khaimah" },
+    { code: "SH", name: "Sharjah" },
+    { code: "UQ", name: "Umm Al Quwain" },
+  ],
+};
+
+function addRequiredStateData(countries: WooCountry[]): WooCountry[] {
+  return countries.map((country) => {
+    const supplementalStates = SUPPLEMENTAL_COUNTRY_STATES[country.code.toUpperCase()];
+    if (!supplementalStates || country.states?.length) return country;
+    return { ...country, states: supplementalStates };
+  });
+}
+
 const FALLBACK_COUNTRIES: WooCountry[] = [
   {
     code: "IN",
@@ -336,7 +359,7 @@ export async function getCountriesFromServer(): Promise<WooCountry[]> {
   try {
     const countries = await restApiFetchJson<WooCountry[]>("/data/countries");
     if (Array.isArray(countries) && countries.length > 0) {
-      countriesCache = countries;
+      countriesCache = addRequiredStateData(countries);
       return countriesCache;
     }
   } catch (err) {
