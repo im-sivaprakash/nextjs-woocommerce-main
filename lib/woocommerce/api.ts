@@ -172,7 +172,7 @@ let currencyCache: CurrencySettings | null = null;
  * Fetch the store's currency configuration from `/wc/v3/settings/general`.
  * Cached in-memory after first call (per server process).
  */
-async function getCurrencySettings(): Promise<CurrencySettings> {
+export async function getCurrencySettings(): Promise<CurrencySettings> {
   if (currencyCache) return currencyCache;
 
   try {
@@ -233,7 +233,7 @@ async function getCurrencySettings(): Promise<CurrencySettings> {
 }
 
 /** Common currency code → symbol lookup. */
-function getCurrencySymbol(code: string): string {
+export function getCurrencySymbol(code: string): string {
   const symbols: Record<string, string> = {
     USD: "$", EUR: "€", GBP: "£", JPY: "¥", AUD: "A$", CAD: "C$",
     CHF: "CHF", CNY: "¥", SEK: "kr", NZD: "NZ$", MXN: "$", SGD: "S$",
