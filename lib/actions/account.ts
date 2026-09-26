@@ -3,6 +3,9 @@
 import { getSessionUser } from "@/lib/auth/session";
 import { fetchOrderTracking } from "@/lib/woocommerce/shipping";
 import type { OrderTrackingInfo } from "@/lib/woocommerce/shipping-types";
+import { getCurrencySettings, getCurrencySymbol } from "@/lib/woocommerce/api";
+import type { CurrencySettings } from "@/lib/woocommerce/types";
+import { decodeHtml } from "@/lib/utils/format";
 
 export interface CustomerOrderSummary {
   id: number;
@@ -11,6 +14,10 @@ export interface CustomerOrderSummary {
   dateCreated: string;
   total: string;
   currency: string;
+  currencySymbol: string;
+  currencyPrefix: string;
+  currencySuffix: string;
+  currencyMinorUnit: number;
   itemCount: number;
   paymentMethodTitle: string;
   lineItems: {
@@ -38,6 +45,7 @@ interface RawOrder {
   date_created_gmt?: string;
   total?: string;
   currency?: string;
+  currency_symbol?: string;
   payment_method_title?: string;
   payment_method?: string;
   billing?: {
@@ -141,7 +149,8 @@ export async function getCustomerOrdersAction(): Promise<{
       return b.id - a.id;
     });
 
-    const orders = formatOrders(combinedRawOrders, user.email);
+    const storeCurrency = await getCurrencySettings();
+    const orders = formatOrders(combinedRawOrders, storeCurrency, user.email);
     return {
       success: true,
       orders,
@@ -182,7 +191,11 @@ export async function getOrderTrackingAction(orderId: number): Promise<{
   }
 }
 
-function formatOrders(rawOrders: RawOrder[], userEmail?: string): CustomerOrderSummary[] {
+function formatOrders(
+  rawOrders: RawOrder[],
+  storeCurrency: CurrencySettings,
+  userEmail?: string
+): CustomerOrderSummary[] {
   return rawOrders
     .filter((order) => {
       // Additional safety filter by email if present
@@ -202,6 +215,18 @@ function formatOrders(rawOrders: RawOrder[], userEmail?: string): CustomerOrderS
         : [];
 
       const itemCount = lineItems.reduce((sum, item) => sum + item.quantity, 0);
+      const currencyCode = order.currency || storeCurrency.code || "INR";
+      const rawSymbol = order.currency_symbol || getCurrencySymbol(currencyCode) || storeCurrency.symbol || "₹";
+      const currencySymbol = decodeHtml(rawSymbol);
+
+      const currencyPrefix =
+        order.currency && order.currency !== storeCurrency.code
+          ? currencySymbol
+          : storeCurrency.prefix || currencySymbol;
+      const currencySuffix =
+        order.currency && order.currency !== storeCurrency.code
+          ? ""
+          : storeCurrency.suffix || "";
 
       return {
         id: order.id,
@@ -209,7 +234,11 @@ function formatOrders(rawOrders: RawOrder[], userEmail?: string): CustomerOrderS
         status: order.status || "pending",
         dateCreated: order.date_created || order.date_created_gmt || "",
         total: order.total || "0",
-        currency: order.currency || "USD",
+        currency: currencyCode,
+        currencySymbol,
+        currencyPrefix,
+        currencySuffix,
+        currencyMinorUnit: storeCurrency.minor_unit ?? 2,
         itemCount,
         paymentMethodTitle: order.payment_method_title || order.payment_method || "Online",
         lineItems,

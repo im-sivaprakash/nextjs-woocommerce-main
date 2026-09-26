@@ -71,6 +71,18 @@ function StatusBadge({ status }: { status: string }) {
   }
 }
 
+function formatOrderAmount(
+  amount: string | number,
+  order: CustomerOrderSummary
+): string {
+  const num = typeof amount === "string" ? parseFloat(amount || "0") : amount;
+  const safeNum = isNaN(num) ? 0 : num;
+  const formatted = safeNum.toFixed(order.currencyMinorUnit ?? 2);
+  const prefix = order.currencyPrefix ?? order.currencySymbol ?? "₹";
+  const suffix = order.currencySuffix ?? "";
+  return `${prefix}${formatted}${suffix}`;
+}
+
 export function OrdersPageContent() {
   const router = useRouter();
   const { isAuthenticated, isInitialized } = useAuthStore();
@@ -253,7 +265,7 @@ export function OrdersPageContent() {
                   <div className="flex items-center gap-3 self-end sm:self-auto">
                     <StatusBadge status={order.status} />
                     <span className="font-heading font-bold text-base text-foreground">
-                      ${parseFloat(order.total || "0").toFixed(2)}
+                      {formatOrderAmount(order.total, order)}
                     </span>
                   </div>
                 </div>
@@ -279,7 +291,7 @@ export function OrdersPageContent() {
                             </span>
                           </div>
                           <span className="font-medium text-foreground">
-                            ${parseFloat(item.total || "0").toFixed(2)}
+                            {formatOrderAmount(item.total, order)}
                           </span>
                         </div>
                       ))}

@@ -86,6 +86,35 @@ export function GoogleSignInButton({
     if (!clientId) return;
 
     let isMounted = true;
+    let resizeObserver: ResizeObserver | null = null;
+
+    const renderGsiButton = () => {
+      if (!googleBtnContainerRef.current || !window.google?.accounts?.id || !isMounted) return;
+
+      const container = googleBtnContainerRef.current;
+      const parentWidth =
+        container.clientWidth ||
+        container.parentElement?.clientWidth ||
+        (typeof window !== "undefined" ? Math.min(window.innerWidth - 48, 380) : 320);
+
+      // Google Identity Services supports width between 200px and 400px
+      const targetWidth = Math.min(Math.max(Math.floor(parentWidth), 200), 400);
+
+      container.innerHTML = "";
+      try {
+        window.google.accounts.id.renderButton(container, {
+          type: "standard",
+          theme: "outline",
+          size: "large",
+          text: mode === "register" ? "signup_with" : "signin_with",
+          shape: "rectangular",
+          logo_alignment: "center",
+          width: targetWidth,
+        });
+      } catch (err) {
+        console.warn("[GoogleSignInButton] Error rendering button:", err);
+      }
+    };
 
     const initializeGsi = () => {
       if (!window.google?.accounts?.id || !isMounted) return;
@@ -116,18 +145,22 @@ export function GoogleSignInButton({
         });
 
         setIsGsiLoaded(true);
+        renderGsiButton();
 
-        if (googleBtnContainerRef.current) {
-          googleBtnContainerRef.current.innerHTML = "";
-          window.google.accounts.id.renderButton(googleBtnContainerRef.current, {
-            type: "standard",
-            theme: "outline",
-            size: "large",
-            text: mode === "register" ? "signup_with" : "signin_with",
-            shape: "rectangular",
-            logo_alignment: "center",
-            width: googleBtnContainerRef.current.offsetWidth || 380,
+        // Responsive re-render on container size changes
+        if (googleBtnContainerRef.current && typeof ResizeObserver !== "undefined") {
+          let resizeTimeout: NodeJS.Timeout;
+          resizeObserver = new ResizeObserver((entries) => {
+            for (const entry of entries) {
+              if (entry.contentRect.width > 0) {
+                clearTimeout(resizeTimeout);
+                resizeTimeout = setTimeout(() => {
+                  if (isMounted) renderGsiButton();
+                }, 150);
+              }
+            }
           });
+          resizeObserver.observe(googleBtnContainerRef.current);
         }
       } catch (err) {
         console.warn("[GoogleSignInButton] Error initializing GSI:", err);
@@ -137,37 +170,35 @@ export function GoogleSignInButton({
     // Check if script is already in document
     if (window.google?.accounts?.id) {
       initializeGsi();
-      return;
+    } else {
+      const existingScript = document.querySelector(
+        'script[src="https://accounts.google.com/gsi/client"]'
+      );
+
+      if (existingScript) {
+        existingScript.addEventListener("load", initializeGsi);
+      } else {
+        const script = document.createElement("script");
+        script.src = "https://accounts.google.com/gsi/client";
+        script.async = true;
+        script.defer = true;
+        script.onload = initializeGsi;
+        document.head.appendChild(script);
+      }
     }
-
-    const existingScript = document.querySelector(
-      'script[src="https://accounts.google.com/gsi/client"]'
-    );
-
-    if (existingScript) {
-      existingScript.addEventListener("load", initializeGsi);
-      return () => {
-        isMounted = false;
-        existingScript.removeEventListener("load", initializeGsi);
-      };
-    }
-
-    const script = document.createElement("script");
-    script.src = "https://accounts.google.com/gsi/client";
-    script.async = true;
-    script.defer = true;
-    script.onload = initializeGsi;
-    document.head.appendChild(script);
 
     return () => {
       isMounted = false;
+      if (resizeObserver) {
+        resizeObserver.disconnect();
+      }
     };
   }, [clientId, mode, googleLogin, onSuccess]);
 
   const handleCustomClick = () => {
     if (!clientId) {
       toast.error(
-        "Google Client ID is not configured. Please set PUBLIC_GOOGLE_CLIENT_ID."
+        "Google Client ID is not configured. Please set NEXT_PUBLIC_GOOGLE_CLIENT_ID in your .env file."
       );
       return;
     }
@@ -182,12 +213,12 @@ export function GoogleSignInButton({
   const isLoading = storeLoading || isSubmitting;
 
   return (
-    <div className="w-full">
+    <div className="w-full my-3 flex justify-center max-w-full overflow-hidden">
       {/* Official GSI rendered button target */}
       <div
         ref={googleBtnContainerRef}
-        className={`w-full flex justify-center overflow-hidden min-h-[40px] [&>div]:w-full [&_iframe]:!w-full [&_iframe]:!max-w-full ${
-          isGsiLoaded && !isLoading ? "block" : "hidden"
+        className={`w-full max-w-full flex justify-center items-center min-h-[44px] overflow-hidden [&>div]:!max-w-full [&_iframe]:!max-w-full ${
+          isGsiLoaded && !isLoading ? "flex" : "hidden"
         }`}
       />
 
@@ -198,7 +229,7 @@ export function GoogleSignInButton({
           variant="outline"
           disabled={disabled || isLoading}
           onClick={handleCustomClick}
-          className="w-full h-10 text-sm font-medium gap-2.5 hover:bg-muted/70 transition-colors border-border/80"
+          className="w-full h-11 text-sm font-medium gap-2.5 hover:bg-muted/70 transition-colors border-border/80"
         >
           {isLoading ? (
             <>
