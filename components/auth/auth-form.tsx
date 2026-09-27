@@ -182,7 +182,7 @@ export function AuthForm({ initialMode = "login" }: AuthFormProps) {
   return (
     <div className="w-full max-w-md mx-auto">
       {/* Outer Card Container */}
-      <div className="rounded-2xl border border-border/70 bg-card/80 backdrop-blur-sm p-6 sm:p-8 shadow-xl shadow-black/5 dark:shadow-black/30 transition-all">
+      <div className="rounded-2xl border border-border/70 bg-card/80 backdrop-blur-sm p-5 sm:p-8 shadow-xl shadow-black/5 dark:shadow-black/30 transition-all overflow-hidden">
         
         {/* Mode Switcher Tabs (Only visible when not on Forgot Password) */}
         {mode !== "forgot-password" && (

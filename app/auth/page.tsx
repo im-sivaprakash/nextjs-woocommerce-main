@@ -18,7 +18,7 @@ function AuthLoading() {
 
 export default function AuthPage() {
   return (
-    <div className="container mx-auto px-4 py-12 sm:py-16 flex items-center justify-center min-h-[calc(100vh-16rem)]">
+    <div className="container mx-auto px-4 py-8 sm:py-16 flex items-center justify-center min-h-[calc(100vh-16rem)] max-w-full overflow-x-hidden">
       <Suspense fallback={<AuthLoading />}>
         <AuthForm initialMode="login" />
       </Suspense>
