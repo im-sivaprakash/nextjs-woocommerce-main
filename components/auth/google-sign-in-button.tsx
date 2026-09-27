@@ -93,16 +93,20 @@ export function GoogleSignInButton({
       if (!googleBtnContainerRef.current || !window.google?.accounts?.id || !isMounted) return;
 
       const container = googleBtnContainerRef.current;
-      const parentWidth =
-        container.clientWidth ||
-        container.parentElement?.clientWidth ||
-        (typeof window !== "undefined" ? Math.min(window.innerWidth - 48, 380) : 320);
+      let availableWidth = container.clientWidth;
+      if (!availableWidth && container.parentElement) {
+        availableWidth = container.parentElement.clientWidth;
+      }
+      if (!availableWidth && typeof window !== "undefined") {
+        // Account for screen width minus outer container padding (32px) and card padding (40px)
+        availableWidth = window.innerWidth - 72;
+      }
 
-      // Google Identity Services supports width between 200px and 400px
-      const targetWidth = Math.min(Math.max(Math.floor(parentWidth), 200), 400);
+      // Clamp between 200px and 380px, strictly fitting the mobile card
+      const targetWidth = Math.min(Math.max(Math.floor(availableWidth || 280), 200), 380);
 
       // Avoid re-rendering if width is essentially unchanged to prevent flickering loops
-      if (!force && Math.abs(lastRenderedWidth - targetWidth) < 20) {
+      if (!force && Math.abs(lastRenderedWidth - targetWidth) < 15) {
         return;
       }
 
@@ -160,7 +164,11 @@ export function GoogleSignInButton({
         });
 
         setIsGsiLoaded(true);
-        renderGsiButton(true);
+
+        // Ensure container is unhidden in the DOM before calculating its exact pixel width
+        requestAnimationFrame(() => {
+          if (isMounted) renderGsiButton(true);
+        });
 
         window.addEventListener("resize", handleWindowResize);
       } catch (err) {
