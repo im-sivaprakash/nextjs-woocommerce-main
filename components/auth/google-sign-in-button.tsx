@@ -86,9 +86,10 @@ export function GoogleSignInButton({
     if (!clientId) return;
 
     let isMounted = true;
-    let resizeObserver: ResizeObserver | null = null;
+    let lastRenderedWidth = 0;
+    let resizeTimer: NodeJS.Timeout | null = null;
 
-    const renderGsiButton = () => {
+    const renderGsiButton = (force = false) => {
       if (!googleBtnContainerRef.current || !window.google?.accounts?.id || !isMounted) return;
 
       const container = googleBtnContainerRef.current;
@@ -100,7 +101,14 @@ export function GoogleSignInButton({
       // Google Identity Services supports width between 200px and 400px
       const targetWidth = Math.min(Math.max(Math.floor(parentWidth), 200), 400);
 
+      // Avoid re-rendering if width is essentially unchanged to prevent flickering loops
+      if (!force && Math.abs(lastRenderedWidth - targetWidth) < 20) {
+        return;
+      }
+
+      lastRenderedWidth = targetWidth;
       container.innerHTML = "";
+
       try {
         window.google.accounts.id.renderButton(container, {
           type: "standard",
@@ -114,6 +122,13 @@ export function GoogleSignInButton({
       } catch (err) {
         console.warn("[GoogleSignInButton] Error rendering button:", err);
       }
+    };
+
+    const handleWindowResize = () => {
+      if (resizeTimer) clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(() => {
+        if (isMounted) renderGsiButton(false);
+      }, 250);
     };
 
     const initializeGsi = () => {
@@ -145,23 +160,9 @@ export function GoogleSignInButton({
         });
 
         setIsGsiLoaded(true);
-        renderGsiButton();
+        renderGsiButton(true);
 
-        // Responsive re-render on container size changes
-        if (googleBtnContainerRef.current && typeof ResizeObserver !== "undefined") {
-          let resizeTimeout: NodeJS.Timeout;
-          resizeObserver = new ResizeObserver((entries) => {
-            for (const entry of entries) {
-              if (entry.contentRect.width > 0) {
-                clearTimeout(resizeTimeout);
-                resizeTimeout = setTimeout(() => {
-                  if (isMounted) renderGsiButton();
-                }, 150);
-              }
-            }
-          });
-          resizeObserver.observe(googleBtnContainerRef.current);
-        }
+        window.addEventListener("resize", handleWindowResize);
       } catch (err) {
         console.warn("[GoogleSignInButton] Error initializing GSI:", err);
       }
@@ -189,9 +190,8 @@ export function GoogleSignInButton({
 
     return () => {
       isMounted = false;
-      if (resizeObserver) {
-        resizeObserver.disconnect();
-      }
+      if (resizeTimer) clearTimeout(resizeTimer);
+      window.removeEventListener("resize", handleWindowResize);
     };
   }, [clientId, mode, googleLogin, onSuccess]);
 
